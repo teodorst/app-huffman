@@ -15,7 +15,7 @@ priority_queue.o: priority_queue.c priority_queue.h
 
 
 run: huffman_serial
-	./huffman_serial
+	./huffman_serial compress in.in out.out
 
 clean:
 	rm *.o huffman_serial

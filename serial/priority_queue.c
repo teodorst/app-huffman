@@ -9,32 +9,45 @@ heap_t* init_priority_queue() {
 }
 
 
-void push(heap_t *heap, int priority, char* data) {
+void push(heap_t *heap, struct node_t* new_node) {
 	if (heap->len == heap->size) {
 		heap->size = heap->size ? heap->size * 2 : 4;
-		heap->nodes = (node_t *) realloc(heap->nodes, heap->size * sizeof(node_t));
+		heap->nodes = (struct node_t *) realloc(heap->nodes, heap->size * sizeof(struct node_t));
 	}
 	
 	int i, j;
 	i = heap->len;
 	j = i / 2;
-	while (i >= 0 && heap->nodes[j].priority > priority && i != j) {
+	while (i >= 0 && heap->nodes[j].priority > new_node->priority && i != j) {
 		heap->nodes[i] = heap->nodes[j];
 		i = j;
 		j /= 2;
 	}
-	heap->nodes[i].priority = priority;
-	heap->nodes[i].data = data;
+	heap->nodes[i].priority = new_node->priority;
+	heap->nodes[i].data = new_node->data;
+	heap->nodes[i].left = new_node->left;
+	heap->nodes[i].right = new_node->right;
 	heap->len ++;
 }
 
-char* pop(heap_t* heap) {
+struct node_t* pop(heap_t* heap) {
 	if (heap->len == 0) {
-		return NULL;
+		struct node_t* null_node = (struct node_t*) malloc (sizeof(struct node_t));
+		null_node->data = '$';
+		null_node->priority = -1;
+		null_node->left = NULL;
+		null_node->right = NULL;
+		return null_node;
+//		return NULL;
 	}
 	int i, j, k;
 
-	char *data = heap->nodes[0].data;
+	struct node_t* old_node = (struct node_t *) malloc (sizeof(struct node_t));
+	old_node -> data = heap->nodes[0].data;
+	old_node -> priority = heap->nodes[0].priority;
+	old_node -> left = heap->nodes[0].left;
+	old_node -> right = heap->nodes[0].right;
+
 	heap->nodes[0] = heap->nodes[heap->len - 1];
 	heap->len --;
 	i = 0;
@@ -61,5 +74,5 @@ char* pop(heap_t* heap) {
 
 	}
 
-	return data;
+	return old_node;
 }
