@@ -1,19 +1,14 @@
+#ifndef PRIORITY_QUEUE_H
+#define PRIORITY_QUEUE_H
 
-
-typedef struct node_t{
-	int priority;
-	char data;
-	struct node_t* left;
-	struct node_t* right;
-};
-
-typedef struct {
-    struct node_t *nodes;
-    int len;
-    int size;
-} heap_t;
-
+#include "huffman.h"
 
 heap_t* init_priority_queue();
+
 void push(heap_t *heap, struct node_t *node);
+
 struct node_t* pop(heap_t* heap);
+
+void insert_values_in_queue(unsigned long long int* frequecy, heap_t* h);
+
+#endif /* PRIORITY_QUEUE_H */
