@@ -69,7 +69,7 @@ void insert_values_in_queue(unsigned long long int* frequecy, heap_t* h){
 	int i;
 
 	/* add all the letters into the heap */
-	for (i = 0 ; i < 255 ; i++) {
+	for (i = 0 ; i < 128 ; i++) {
 		if (frequecy[i] > 0) {
 			node_t* node = (node_t*) malloc (sizeof(struct node_t));
 			node->left = node->right = NULL;

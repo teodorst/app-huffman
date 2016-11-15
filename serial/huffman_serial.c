@@ -22,11 +22,12 @@ FILE* open_file(char *filename, char *mode) {
 }
 
 
-
 int huffman_compress(char* input_filename, char* output_filename, char* codification_filename) {
     printf("compress\n");
     
-    int floors[MAX_BITS_CODE];
+    char** codification = (char**) calloc(128, sizeof(char*));
+
+    char path[MAX_BITS_CODE];
 
     FILE* input_fp = open_file(input_filename, "r");
     unsigned long long int* frequecy = compute_frequency(input_fp);
@@ -34,25 +35,33 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     /* build the huffman tree */
     node_t *root = build_huffman_tree(frequecy);
 
-    /* print the encoded letters */
-    print_codes(root, floors, 0);
+	// print the encoded letters 
+    print_codes(root, path, 0);
 
     FILE* codification_fp = open_file(codification_filename, "w");
-    
-    /* write codification to file */
-    write_codification(codification_fp, root, floors, 0);
 
-    fclose(input_fp);
-    fclose(codification_fp);
+    /* write codification to file */
+    find_codification(root, path, 0, codification);
+    write_codification(codification_fp, codification);
+	fclose(codification_fp);
+
+	FILE* output_fp = open_file(output_filename, "w");
+
+	write_codification_for_input_file(codification, input_fp, output_fp);
+
+	fclose(input_fp);
+	fclose(output_fp);
 
     return 0;
 }
 
+	
 
 int huffman_decompress(char* input_filename, char* output_filename, char *codification) {
     printf("decompress\n");
     return 0;
 }
+
 
 
 int main (int argc, char* argv[]) {
@@ -68,12 +77,6 @@ int main (int argc, char* argv[]) {
 		printf("Usage huffman_serial operation[compress/decompress] input_file ouput_file codification_file_name\n");
 		return 1;
 	}
-	FILE *dec = open_file("text.", "w");
-	int i;
-	for ( i = 0 ; i < 128; i ++) {
-		fputc(i, dec);
-	}
-	fclose(dec);
 	return 0;
 }
 

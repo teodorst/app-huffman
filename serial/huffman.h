@@ -17,10 +17,16 @@ typedef struct {
     int size;
 } heap_t;
 
+void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp);
 
-void write_codification(FILE* codification_fp, node_t *root, int *vect, int top);
+void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp, char* output_char, int* contor, 
+	unsigned long long int* bits);
 
-void print_codes(node_t *root, int *vect, int top);
+void write_codification(FILE* codification_fp, char **codification);
+
+void find_codification(node_t *root, char *path, int level, char** codification);
+
+void print_codes(node_t *root, char *path, int top);
 
 node_t* build_huffman_tree(unsigned long long int* frequecy);
 
