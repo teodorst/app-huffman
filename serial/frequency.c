@@ -40,11 +40,5 @@ unsigned long long int* compute_frequency(FILE *fp) {
 		memset(buf, '\0', CHUNK);
 	}
 	fseek(fp, 0, SEEK_SET);
-	int i; 
-	for (i = 0; i < 128; i ++) {
-		if (frequency[i] > 0) {
-			printf("%c - %d : %d\n", i, i, (int)frequency[i]);
-		}
-	}
 	return frequency;
 }

@@ -24,6 +24,8 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 
 void write_codification(FILE* codification_fp, char **codification);
 
+char** read_configuration(FILE *codification_fp);
+
 void find_codification(node_t *root, char *path, int level, char** codification);
 
 void print_codes(node_t *root, char *path, int top);

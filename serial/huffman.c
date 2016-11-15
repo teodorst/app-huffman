@@ -45,15 +45,35 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 
 void write_codification(FILE* codification_fp, char **codification) {
     int i;
+    char *output_string = (char*) calloc(MAX_BITS_CODE + 5, sizeof(char));
 
     for (i = 0; i < MAX_BITS_CODE; i ++) {
         if (codification[i] != NULL) {
-            char *output_string = (char*) calloc(MAX_BITS_CODE + 6, sizeof(char));
             sprintf(output_string, "%c : %s\n", i, codification[i]);
-            fwrite(output_string, i + 6, 1, codification_fp);            
-            free(output_string);
+            fwrite(output_string, strlen(codification[i]) + 5, 1, codification_fp);            
+            memset(output_string, 0, MAX_BITS_CODE + 5);
         }
     }
+    free(output_string);
+}
+
+
+char** read_configuration(FILE *codification_fp) {
+    char **codification = (char**) calloc(128, sizeof(char*));
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+    char index;
+
+    while ((nread = getline(&line, &len, codification_fp)) != -1) {
+        size_t line_length = strlen(line);
+        line[line_length-1] = '\0';
+        sscanf(line, "%c", &index);
+        codification[(unsigned char)index] = strdup(line+4);
+    }
+
+    free(line);
+    return codification;
 }
 
 
@@ -98,10 +118,47 @@ void print_codes(node_t *root, char *path, int level) {
     }
 }
 
+// Return a new node with given data
+node_t* init_node(char data) {
+    node_t* node = (node_t*) malloc(sizeof(node_t));
+    node->data = data;
+    node->left = node->right = NULL;
+    node->priority = 0; // this data is unused in decompression phase
+    return node;
+}
 
-// note_t* build_huffman_tree_from_codification() {
+
+node_t* build_huffman_tree_from_codification(char **codification) {
+    int i;
+    int current_code_index;
     
-// }
+    // init the root node
+    node_t* root = init_node('#');
+    node_t* node = root;
+    
+    for (i = 0; i < 128; i ++) {
+        if (codification[i]) {
+            node = root;
+            for (current_code_index = 0; i < strlen(codification[i]); current_code_index++) {
+                if (codification[i][current_code_index] == '0') {
+                    if (node->left == NULL) {
+                        node->left = init_node('#');
+                    }
+                    node = node->left;
+                }
+                else {
+                    if (node->right == NULL) {
+                        node->right = init_node('#');
+                    }
+                    node = node->right;
+                }
+            }
+            node->data = i;
+            node = root;
+        }
+    }
+    return root;
+}
 
 
 node_t* build_huffman_tree(unsigned long long int* frequecy){

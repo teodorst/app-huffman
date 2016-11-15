@@ -52,13 +52,27 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 	fclose(input_fp);
 	fclose(output_fp);
 
+	// TODO free codification here
+
     return 0;
 }
 
 	
 
-int huffman_decompress(char* input_filename, char* output_filename, char *codification) {
+int huffman_decompress(char* input_filename, char* output_filename, char *codification_filename) {
     printf("decompress\n");
+
+    FILE* codification_fp = open_file(codification_filename, "r");
+
+    char** codification = read_configuration(codification_fp);
+    int i;
+    for (i = 0; i < 128; i ++) {
+    	if (codification[i]) {
+    		printf("%c : %s\n", i, codification[i]);
+    	}
+    }
+
+    // TODO free codification
     return 0;
 }
 
