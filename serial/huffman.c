@@ -118,6 +118,7 @@ void print_codes(node_t *root, char *path, int level) {
     }
 }
 
+
 // Return a new node with given data
 node_t* init_node(char data) {
     node_t* node = (node_t*) malloc(sizeof(node_t));
@@ -130,8 +131,9 @@ node_t* init_node(char data) {
 
 node_t* build_huffman_tree_from_codification(char **codification) {
     int i;
-    int current_code_index;
-    
+    int current_code_index = 0;
+    int codification_length;
+
     // init the root node
     node_t* root = init_node('#');
     node_t* node = root;
@@ -139,7 +141,9 @@ node_t* build_huffman_tree_from_codification(char **codification) {
     for (i = 0; i < 128; i ++) {
         if (codification[i]) {
             node = root;
-            for (current_code_index = 0; i < strlen(codification[i]); current_code_index++) {
+            codification_length = strlen(codification[i]);
+            current_code_index = 0;
+            for (current_code_index = 0; current_code_index < codification_length; current_code_index ++) {
                 if (codification[i][current_code_index] == '0') {
                     if (node->left == NULL) {
                         node->left = init_node('#');
@@ -154,7 +158,6 @@ node_t* build_huffman_tree_from_codification(char **codification) {
                 }
             }
             node->data = i;
-            node = root;
         }
     }
     return root;
@@ -166,7 +169,7 @@ node_t* build_huffman_tree(unsigned long long int* frequecy){
     heap_t *h = init_priority_queue();
     insert_values_in_queue(frequecy, h);
 
-    while (h->len > 1){
+    while (h->len > 1) {
         node_t* root = (struct node_t*) malloc (sizeof(struct node_t));
         node_t* left;
         node_t* right;

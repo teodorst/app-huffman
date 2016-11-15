@@ -22,6 +22,17 @@ FILE* open_file(char *filename, char *mode) {
 }
 
 
+void free_codification_matrix(char** codification) {
+    int i;
+    for (i = 0; i < 128; i ++) {
+        if (codification[i]) {
+            free(codification[i]);
+        }
+    }
+    free(codification);
+}
+
+
 int huffman_compress(char* input_filename, char* output_filename, char* codification_filename) {
     printf("compress\n");
     
@@ -52,7 +63,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 	fclose(input_fp);
 	fclose(output_fp);
 
-	// TODO free codification here
+    free_codification_matrix(codification);
 
     return 0;
 }
@@ -65,14 +76,16 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     FILE* codification_fp = open_file(codification_filename, "r");
 
     char** codification = read_configuration(codification_fp);
-    int i;
-    for (i = 0; i < 128; i ++) {
-    	if (codification[i]) {
-    		printf("%c : %s\n", i, codification[i]);
-    	}
-    }
+    node_t* root = build_huffman_tree_from_codification(codification);
+    
+    int top = 0;
+    char path[MAX_BITS_CODE];
+    print_codes(root, path, top);
+    
+    // citim mai multi bytes, parcurgem byte cu byte. si facem dfs-uri in functie de fiecare bit al fiecarui byte.
+    // ar trebui sa mearga destul de repede. trebuie sa verificam sa avem citirea buna.
 
-    // TODO free codification
+    free_codification_matrix(codification);
     return 0;
 }
 
