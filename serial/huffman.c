@@ -99,6 +99,11 @@ void print_codes(node_t *root, char *path, int level) {
 }
 
 
+// note_t* build_huffman_tree_from_codification() {
+    
+// }
+
+
 node_t* build_huffman_tree(unsigned long long int* frequecy){
     /* initialize and populate the priority queue */
     heap_t *h = init_priority_queue();
