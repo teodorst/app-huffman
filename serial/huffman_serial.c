@@ -93,10 +93,10 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
 
 int main (int argc, char* argv[]) {
 
-	if (strcmp(argv[OPERATION], "compress") == 0 && argc == 5) {
+	if (argc == 5 && strcmp(argv[OPERATION], "compress") == 0) {
 		huffman_compress(argv[INPUT_FILE], argv[OUTPUT_FILE], argv[CODIFICATION]);
 	}
-	else if (strcmp(argv[OPERATION], "decompress") == 0 && argc == 5) {
+	else if (argc == 5 && strcmp(argv[OPERATION], "decompress") == 0) {
 		huffman_decompress(argv[INPUT_FILE], argv[OUTPUT_FILE], argv[CODIFICATION]);
 	}
 	else {
