@@ -36,6 +36,7 @@ void free_codification_matrix(char** codification) {
 int huffman_compress(char* input_filename, char* output_filename, char* codification_filename) {
     printf("compress\n");
     
+    unsigned long long int nbits;
     char** codification = (char**) calloc(128, sizeof(char*));
 
     char path[MAX_BITS_CODE];
@@ -46,25 +47,25 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     /* build the huffman tree */
     node_t *root = build_huffman_tree(frequecy);
 
-	// print the encoded letters 
+	/* print the encoded letters */ 
     print_codes(root, path, 0);
+    
+    find_codification(root, path, 0, codification);
+
 
     FILE* codification_fp = open_file(codification_filename, "w");
-
-    /* write codification to file */
-    find_codification(root, path, 0, codification);
-    write_codification(codification_fp, codification);
-	fclose(codification_fp);
-
 	FILE* output_fp = open_file(output_filename, "w");
 
-	write_codification_for_input_file(codification, input_fp, output_fp);
+	nbits = write_codification_for_input_file(codification, input_fp, output_fp);
 
 	fclose(input_fp);
 	fclose(output_fp);
 
-    free_codification_matrix(codification);
+    /* write codification to file */
+    write_codification(codification_fp, codification, nbits);
+    fclose(codification_fp);
 
+    free_codification_matrix(codification);
     return 0;
 }
 
@@ -72,10 +73,11 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 
 int huffman_decompress(char* input_filename, char* output_filename, char *codification_filename) {
     printf("decompress\n");
+    unsigned long long int nbits = 0;
 
     FILE* codification_fp = open_file(codification_filename, "r");
 
-    char** codification = read_configuration(codification_fp);
+    char** codification = read_configuration(codification_fp, &nbits);
     node_t* root = build_huffman_tree_from_codification(codification);
     
     int top = 0;

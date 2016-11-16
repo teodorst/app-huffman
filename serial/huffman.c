@@ -7,7 +7,7 @@
 #include "priority_queue.h"
 
 
-void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
+unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
     size_t nread = 0;
     int chunk_size = 0;
     char buf[CHUNK];
@@ -20,6 +20,8 @@ void write_codification_for_input_file(char **codification, FILE* input_fp, FILE
         write_codification_for_chunk(buf, chunk_size, codification, output_fp, &output_char, &contor, &bits);
         memset(buf, '\0', CHUNK);
     }
+
+    return bits;
 }
 
 
@@ -43,9 +45,11 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 }
 
 
-void write_codification(FILE* codification_fp, char **codification) {
+void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits) {
     int i;
     char *output_string = (char*) calloc(MAX_BITS_CODE + 5, sizeof(char));
+
+    fprintf(codification_fp, "%llu\n", nbits);
 
     for (i = 0; i < MAX_BITS_CODE; i ++) {
         if (codification[i] != NULL) {
@@ -58,26 +62,37 @@ void write_codification(FILE* codification_fp, char **codification) {
 }
 
 
-char** read_configuration(FILE *codification_fp) {
+char** read_configuration(FILE *codification_fp, unsigned long long int* nbits) {
     char **codification = (char**) calloc(128, sizeof(char*));
     char *line = NULL;
-    size_t len = 0;
     ssize_t nread;
     char index;
+    size_t line_length;
 
-    while ((nread = getline(&line, &len, codification_fp)) != -1) {
-        size_t line_length = strlen(line);
-        line[line_length-1] = '\0';
-        sscanf(line, "%c", &index);
-        codification[(unsigned char)index] = strdup(line+4);
+    fscanf(codification_fp, "%llu", nbits);
+    fgetc(codification_fp);
+    while ((nread = getline(&line, &line_length, codification_fp)) != -1) {
+        if (nread == 1) {
+            index = line[0];
+            nread = getline(&line, &line_length, codification_fp);
+            if (nread != -1) {
+                line[nread-1] = '\0';
+                codification[(unsigned char)index] = strdup(line+3);    
+            }
+        } else {
+            line[nread-1] = '\0';
+            sscanf(line, "%c", &index);
+            codification[(unsigned char)index] = strdup(line+4);    
+        }
     }
+    
 
     free(line);
     return codification;
 }
 
 
-/*depth travversal of tree and build the code*/
+/* depth traversal of tree and build the code */
 void find_codification(node_t *node, char *path, int level, char **codification) {
     if (node->left != NULL){
         path[level] = 48;

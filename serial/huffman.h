@@ -18,14 +18,14 @@ typedef struct {
 } heap_t;
 
 
-void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp);
+unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp);
 
 void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp, char* output_char, int* contor, 
 	unsigned long long int* bits);
 
-void write_codification(FILE* codification_fp, char **codification);
+void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits);
 
-char** read_configuration(FILE *codification_fp);
+char** read_configuration(FILE *codification_fp, unsigned long long int *nbits);
 
 void find_codification(node_t *root, char *path, int level, char** codification);
 
