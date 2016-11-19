@@ -18,7 +18,6 @@ void print_frequency(int chunk_size, unsigned long long int* frequency){
 
 void compute_frequency_for_chunk(char *chunk, int chunk_size, unsigned long long int* frequency) {
 	int i;
-	printf("DATA: %s %d %c \n", chunk, chunk_size, chunk[0]);
 
 	for (i = 0; i < chunk_size; i ++) {
 		frequency[(unsigned char)chunk[i]] ++;

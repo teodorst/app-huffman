@@ -21,7 +21,7 @@ huffman.o: huffman.c huffman.h
 
 
 run: huffman_serial
-	./huffman_serial compress in.in out.out
+	./huffman_serial decompress out.out in2.in dictionar
 
 clean:
 	rm *.o huffman_serial

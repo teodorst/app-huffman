@@ -7,13 +7,86 @@
 #include "priority_queue.h"
 
 
+char* read_bytes(FILE *fp, unsigned long long int nbits) {
+    size_t nread = 0;
+    unsigned long long int total_bytes = 0;
+    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1; 
+    char *buf = (char *) malloc (nbytes * sizeof(char));
+    char* aux_buf = (char *) malloc (nbytes * sizeof(char));
+
+    memset(aux_buf, '\0', CHUNK);
+    while((nread = fread(aux_buf, 1, CHUNK, fp)) > 0) {
+        strncpy(buf + total_bytes, aux_buf, nread);
+        total_bytes += CHUNK > nread ? nread : CHUNK;
+        memset(aux_buf, '\0', CHUNK);
+    }
+    
+    if (total_bytes < nbytes)
+        printf("less number of bytes %llu\n", total_bytes);
+
+    return buf;
+}
+
+void write_decoded_ch(FILE* out_fp, char *resut) {
+    
+    fwrite(resut, strlen(resut), 1, out_fp);            
+
+}
+
+char* decode_bytes(node_t *root, char *buffer, unsigned long long int *nbits) {
+    int i, j;
+    int is_leaf = 0;
+    node_t *node = root;
+    unsigned long long int nbytes = *nbits % 8 == 0 ? *nbits/8 : *nbits/8 + 1;
+    unsigned long long int count_bits = 0L;
+    char *out_buffer = (char *) malloc (2 * nbytes * sizeof(char));
+    unsigned long long int out_buffer_size = 0;
+    int bit;
+
+    for (i = 0; i < nbytes; i++) {
+        for (j = 7 ; j >= 0 && count_bits < *nbits; j--){
+            /* depth search from the root */
+            if (is_leaf == 1){
+                node = root;
+                is_leaf = 0;
+            }
+
+            /* get bit */
+            bit = (buffer[i] >> j) & 1;
+
+            /* go left in tree*/
+            if (bit == 0){
+                node = node->left;
+                if (node->left == NULL && node->right == NULL){
+                    out_buffer[out_buffer_size] = node->data;
+                    out_buffer_size ++;
+                    is_leaf = 1;
+                }
+            }
+            else    /* go right in tree */
+            {
+                node = node->right;
+                if (node->left == NULL && node->right == NULL){
+                    out_buffer[out_buffer_size] = node->data;
+                    out_buffer_size ++;
+                    is_leaf = 1;
+                }   
+            }
+            count_bits ++;
+        }
+    }
+    out_buffer[count_bits] = '\0';
+
+    return out_buffer;
+}
+
 unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
     size_t nread = 0;
     int chunk_size = 0;
     char buf[CHUNK];
     char output_char = 0;
     int contor = 7;
-    unsigned long long int bits;
+    unsigned long long int bits = 0L;
 
     while((nread = fread(buf, 1, CHUNK, input_fp)) > 0) {
         chunk_size = CHUNK > nread ? nread : CHUNK;
@@ -27,7 +100,6 @@ unsigned long long int write_codification_for_input_file(char **codification, FI
 
 void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp, char* output_char, int* contor,
     unsigned long long int* bits) {
-    
     int i, j;
     for (i = 0; i < chunk_size; i ++) {
         char *codif = codification[(unsigned int)chunk[i]];
