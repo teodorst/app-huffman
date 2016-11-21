@@ -48,7 +48,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     node_t *root = build_huffman_tree(frequecy);
 
 	/* print the encoded letters */ 
-    print_codes(root, path, 0);
+    // print_codes(root, path, 0);
     
     find_codification(root, path, 0, codification);
 
@@ -81,9 +81,9 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     /* for each codification find the leaf and save it into a buffer */
     node_t* root = build_huffman_tree_from_codification(codification);
     
-    int top = 0;
-    char path[MAX_BITS_CODE];
-    print_codes(root, path, top);
+    // int top = 0;
+    // char path[MAX_BITS_CODE];
+    // print_codes(root, path, top);
     
     /* read the bytes from the inputfile */
     FILE* input_fp = open_file(input_filename, "r");

@@ -9,18 +9,14 @@
 
 char* read_bytes(FILE *fp, unsigned long long int nbits) {
     size_t nread = 0;
-    unsigned long long int total_bytes = 0;
-    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1; 
-    char *buf = (char *) malloc (nbytes * sizeof(char));
-    char* aux_buf = (char *) malloc (nbytes * sizeof(char));
+    unsigned long long int total_bytes = 0L;
+    unsigned long long int nbytes = nbits % 8L == 0L ? nbits / 8L : nbits/8L + 1L; 
+    char *buf = (char *) calloc (nbytes, sizeof(char));
 
-    memset(aux_buf, '\0', CHUNK);
-    while((nread = fread(aux_buf, 1, CHUNK, fp)) > 0) {
-        strncpy(buf + total_bytes, aux_buf, nread);
+    while((nread = fread(buf + total_bytes, 1, CHUNK, fp)) > 0) {
         total_bytes += CHUNK > nread ? nread : CHUNK;
-        memset(aux_buf, '\0', CHUNK);
     }
-    
+
     if (total_bytes < nbytes)
         printf("less number of bytes %llu\n", total_bytes);
 
@@ -35,7 +31,6 @@ void write_decoded_ch(FILE* out_fp, char *resut) {
 
 char* decode_bytes(node_t *root, char *buffer, unsigned long long int *nbits) {
     int i, j;
-    int is_leaf = 0;
     node_t *node = root;
     unsigned long long int nbytes = *nbits % 8 == 0 ? *nbits/8 : *nbits/8 + 1;
     unsigned long long int count_bits = 0L;
@@ -44,34 +39,26 @@ char* decode_bytes(node_t *root, char *buffer, unsigned long long int *nbits) {
     int bit;
 
     for (i = 0; i < nbytes; i++) {
-        for (j = 7 ; j >= 0 && count_bits < *nbits; j--){
-            /* depth search from the root */
-            if (is_leaf == 1){
-                node = root;
-                is_leaf = 0;
-            }
-
+        for (j = 7 ; j >= 0 && count_bits < *nbits; j--) {
+            
             /* get bit */
             bit = (buffer[i] >> j) & 1;
-
+            
             /* go left in tree*/
-            if (bit == 0){
+            if (bit == 0) {
                 node = node->left;
-                if (node->left == NULL && node->right == NULL){
-                    out_buffer[out_buffer_size] = node->data;
-                    out_buffer_size ++;
-                    is_leaf = 1;
-                }
             }
             else    /* go right in tree */
             {
                 node = node->right;
-                if (node->left == NULL && node->right == NULL){
-                    out_buffer[out_buffer_size] = node->data;
-                    out_buffer_size ++;
-                    is_leaf = 1;
-                }   
             }
+
+            /* depth search from the root */
+            if (node->left == NULL && node->right == NULL) {
+                out_buffer[out_buffer_size++] = node->data;
+                node = root;
+            }
+
             count_bits ++;
         }
     }
@@ -94,6 +81,10 @@ unsigned long long int write_codification_for_input_file(char **codification, FI
         memset(buf, '\0', CHUNK);
     }
 
+    // if there are some bits to write in the last byte.
+    if (contor != 7) {
+        fwrite(&output_char, 1, 1, output_fp);
+    }    
     return bits;
 }
 
@@ -191,16 +182,16 @@ void print_codes(node_t *root, char *path, int level) {
         path[level] = 48;
         print_codes(root->left, path, level + 1);
     }
- 	
+    
     if (root->right != NULL){
         path[level] = 49;
         print_codes(root->right, path, level + 1);
     }
  
- 	/* if a leaf is found */
+    /* if a leaf is found */
     if (!(root->left) && !(root->right)){
         path[level] = '\0';
-    	/* print the codification for letter */
+        /* print the codification for letter */
         printf("%c : %s\n", root->data, path);
     }
 }
