@@ -1,8 +1,8 @@
 #ifndef FREQUENCY_H
 #define FREQUENCY_H
 
-// #define CHUNK 1048576
-#define CHUNK 2
+ #define CHUNK 1048576
+// #define CHUNK 3
 
 
 void print_frequency(int chunk_size, unsigned long long int* frequecy);

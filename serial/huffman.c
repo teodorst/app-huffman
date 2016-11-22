@@ -7,39 +7,24 @@
 #include "priority_queue.h"
 
 
-char* read_bytes(FILE *fp, unsigned long long int nbits) {
-    size_t nread = 0;
-    unsigned long long int total_bytes = 0L;
-    unsigned long long int nbytes = nbits % 8L == 0L ? nbits / 8L : nbits/8L + 1L; 
-    char *buf = (char *) calloc (nbytes, sizeof(char));
-
-    while((nread = fread(buf + total_bytes, 1, CHUNK, fp)) > 0) {
-        total_bytes += CHUNK > nread ? nread : CHUNK;
-    }
-
-    if (total_bytes < nbytes)
-        printf("less number of bytes %llu\n", total_bytes);
-
-    return buf;
-}
-
-void write_decoded_ch(FILE* out_fp, char *resut) {
+void write_decoded_ch(FILE* out_fp, char *result) {
     
-    fwrite(resut, strlen(resut), 1, out_fp);            
+    fwrite(result, strlen(result), 1, out_fp);            
 
 }
 
-char* decode_bytes(node_t *root, char *buffer, unsigned long long int *nbits) {
+char* decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nbits, int *remainig_bits) {
     int i, j;
     node_t *node = root;
-    unsigned long long int nbytes = *nbits % 8 == 0 ? *nbits/8 : *nbits/8 + 1;
+    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1;
     unsigned long long int count_bits = 0L;
     char *out_buffer = (char *) malloc (2 * nbytes * sizeof(char));
     unsigned long long int out_buffer_size = 0;
     int bit;
 
     for (i = 0; i < nbytes; i++) {
-        for (j = 7 ; j >= 0 && count_bits < *nbits; j--) {
+        for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
+            //asignare remainig bits
             
             /* get bit */
             bit = (buffer[i] >> j) & 1;
@@ -57,15 +42,57 @@ char* decode_bytes(node_t *root, char *buffer, unsigned long long int *nbits) {
             if (node->left == NULL && node->right == NULL) {
                 out_buffer[out_buffer_size++] = node->data;
                 node = root;
+
+                //reinitilize remainig_bits
             }
 
             count_bits ++;
         }
     }
-    out_buffer[count_bits] = '\0';
+ //   out_buffer[count_bits] = '\0';
 
     return out_buffer;
 }
+
+void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long int nbits) {
+    size_t nread = 0;
+    unsigned long long int total_bytes = 0L;
+    unsigned long long int nbytes = nbits % 8L == 0L ? nbits / 8L : nbits/8L + 1L; 
+    char *aux_buf = (char *) calloc (CHUNK, sizeof(char));
+    char *result;// = (char *) malloc (100 * nbytes * sizeof(char));
+    int *remainig_bits = (int *) malloc (BYTE_SIZE * sizeof(int));
+
+    /* init remaining bits */
+    int p;
+    for (p = 0 ; p < BYTE_SIZE; p++){
+        remainig_bits[BYTE_SIZE] = -1;
+    }
+
+    memset(aux_buf, '\0', CHUNK);
+    while((nread = fread(aux_buf, 1, CHUNK, in_fp)) > 0) {
+        printf("nread %d chunk %d\n", nread, CHUNK);
+
+        /* last CHUNK */
+        if (nread < CHUNK) {
+            result = decode_bytes_for_chunk(root, aux_buf, (nbits - (total_bytes * 8)), remainig_bits);
+            printf("buf %s read %d", aux_buf, nread);
+        }
+        else
+            /* full CHUNK */
+            result = decode_bytes_for_chunk(root, aux_buf, (nread * 8), remainig_bits);
+        
+        /* write in out file the result for that CHUNK*/
+        write_decoded_ch(out_fp, result);
+
+        total_bytes += CHUNK > nread ? nread : CHUNK;
+
+        memset(aux_buf, '\0', nread);
+    }
+
+    if (total_bytes < nbytes)
+        printf("less number of bytes %llu\n", total_bytes);
+}
+
 
 unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
     size_t nread = 0;

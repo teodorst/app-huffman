@@ -85,16 +85,17 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     // char path[MAX_BITS_CODE];
     // print_codes(root, path, top);
     
-    /* read the bytes from the inputfile */
+    /* read the bytes from the inputfile,  */
     FILE* input_fp = open_file(input_filename, "r");
-    char *buffer = read_bytes(input_fp, nbits);
+    FILE* out_fp = open_file(output_filename, "w");
+
+//    char *buffer = read_bytes(input_fp, nbits);
 
     /* decode the bytes using huffman tree */
-    result = decode_bytes(root, buffer, &nbits);
+    decode_bytes(input_fp, out_fp, root, nbits);
 
     /* write the decompressed file */
-    FILE* out_fp = open_file(output_filename, "w");
-    write_decoded_ch(out_fp, result);
+//    write_decoded_ch(out_fp, result);
 
     free_codification_matrix(codification);
     return 0;
