@@ -72,7 +72,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 int huffman_decompress(char* input_filename, char* output_filename, char *codification_filename) {
     printf("decompress\n");
     unsigned long long int nbits = 0;
-    char *result;
+//    char *result;
 
     FILE* codification_fp = open_file(codification_filename, "r");
 
