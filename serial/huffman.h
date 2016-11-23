@@ -36,13 +36,6 @@ node_t* build_huffman_tree(unsigned long long int* frequency);
 
 node_t* build_huffman_tree_from_codification(char **codification);
 
-//char* read_bytes(FILE *fp, unsigned long long int nbits);
-
-//void write_decoded_ch(FILE* out_fp, char *resut);
-
-//char* decode_bytes(node_t *root, char *buffer, unsigned long long int *nbits);
-//void decode_bytes(FILE *in_fp, FILE *out_fp, node_t* root, unsigned long long int nbits);
-//void write_decoded_ch(FILE* out_fp, char *result);
-//char* decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nbits);
+void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long int nbits);
 
 #endif /* HUFFMAN_H */
