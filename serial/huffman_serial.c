@@ -80,7 +80,7 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
 
     /* for each codification find the leaf and save it into a buffer */
     node_t* root = build_huffman_tree_from_codification(codification);
-    
+    printf("Got the tree\n");
     // int top = 0;
     // char path[MAX_BITS_CODE];
     // print_codes(root, path, top);
@@ -88,7 +88,7 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     /* read the bytes from the inputfile,  */
     FILE* input_fp = open_file(input_filename, "r");
     FILE* out_fp = open_file(output_filename, "w");
-
+    printf("Opened files\n");
 //    char *buffer = read_bytes(input_fp, nbits);
 
     /* decode the bytes using huffman tree */

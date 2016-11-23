@@ -18,21 +18,21 @@ node_t* init_node(char data) {
 void write_decoded_ch(FILE* out_fp, char *result) {
     
     fwrite(result, strlen(result), 1, out_fp);
-    free(result);            
+    // free(result);            
 
 }
 
-char* decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nbits, node_t **remainig_node) {
+void decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nbits, node_t **remainig_node, char *out_buffer) {
     int i, j;
 //    node_t *node = root;
 //    node_t *node = (node_t *) malloc (sizeof(node_t));
     node_t *node = *remainig_node;
     unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1;
     unsigned long long int count_bits = 0L;
-    char *out_buffer = (char *) malloc (100 * nbytes * sizeof(char));
     unsigned long long int out_buffer_size = 0;
     int bit;
 
+    memset(out_buffer, '\0', CHUNK);
     for (i = 0; i < CHUNK; i++) {
         for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
             /* get bit */
@@ -58,21 +58,21 @@ char* decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int 
     }
 
     *remainig_node = node;
-    return out_buffer;
 }
+
 
 void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long int nbits) {
     size_t nread = 0;
     unsigned long long int total_bytes = 0L;
     unsigned long long int nbytes = nbits % 8L == 0L ? nbits / 8L : nbits/8L + 1L; 
     char *aux_buf = (char *) calloc (CHUNK, sizeof(char));
-    char *result;// = (char *) malloc (100 * nbytes * sizeof(char));
-    node_t *remainig_node = (node_t *) malloc(sizeof(node_t));
-    remainig_node = root;
+    char *result = (char *) malloc (3 * CHUNK * sizeof(char));
+    node_t *remainig_node = root;
 
     int nr_chunks = 0;
 
     memset(aux_buf, '\0', CHUNK);
+    memset(result, '\0', CHUNK);
     while((nread = fread(aux_buf, 1, CHUNK, in_fp)) > 0) {
         printf("nread %d chunk %d\n", nread, CHUNK);
 
@@ -80,12 +80,12 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
 
         if (nr_chunks * 8 * CHUNK > nbits)
         {    
-            result = decode_bytes_for_chunk(root, aux_buf, (nbits - ((nr_chunks- 1) * CHUNK * 8)), &remainig_node);
+            decode_bytes_for_chunk(root, aux_buf, (nbits - ((nr_chunks- 1) * CHUNK * 8)), &remainig_node, result);
             printf ("PLOST!:(");
         }
         else
         {
-            result = decode_bytes_for_chunk(root, aux_buf, (CHUNK * 8), &remainig_node);
+            decode_bytes_for_chunk(root, aux_buf, (CHUNK * 8), &remainig_node, result);
             /* if (remainig_node == NULL )  printf ("PLOST!:("); */
         }
 
@@ -94,7 +94,8 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
 
         total_bytes += CHUNK > nread ? nread : CHUNK;
 
-        memset(aux_buf, '\0', nread);
+        memset(aux_buf, '\0', CHUNK);
+        memset(result, '\0', CHUNK);
     }
 
     if (total_bytes < nbytes)
