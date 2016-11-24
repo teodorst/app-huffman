@@ -72,7 +72,6 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 int huffman_decompress(char* input_filename, char* output_filename, char *codification_filename) {
     printf("decompress\n");
     unsigned long long int nbits = 0;
-//    char *result;
 
     FILE* codification_fp = open_file(codification_filename, "r");
 
@@ -89,13 +88,9 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     FILE* input_fp = open_file(input_filename, "r");
     FILE* out_fp = open_file(output_filename, "w");
     printf("Opened files\n");
-//    char *buffer = read_bytes(input_fp, nbits);
 
     /* decode the bytes using huffman tree */
     decode_bytes(input_fp, out_fp, root, nbits);
-
-    /* write the decompressed file */
-//    write_decoded_ch(out_fp, result);
 
     free_codification_matrix(codification);
     return 0;

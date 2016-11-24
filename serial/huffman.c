@@ -70,12 +70,11 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
     remainig_node = root;
 
     int length = 0;
-
+    int minimum_size = CHUNK * 8;
     while((nread = fread(aux_buf, 1, CHUNK, in_fp)) > 0) {
-
-        if (nbits > CHUNK * 8) {
+        if (nbits > minimum_size) {
             length = decode_bytes_for_chunk(root, aux_buf, (CHUNK * 8), &remainig_node, result);
-            nbits -= CHUNK * 8;
+            nbits -= minimum_size;
         } else {
             length = decode_bytes_for_chunk(root, aux_buf, nbits, &remainig_node, result);
         }
