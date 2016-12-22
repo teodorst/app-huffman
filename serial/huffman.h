@@ -3,6 +3,8 @@
 
 #define MAX_BITS_CODE 127	/* the maximum number of bits for a codification */
 #define BYTE_SIZE 8
+#define OUTPUT_BUFFER_SIZE 1024
+
 
 typedef struct node_t{
 	int priority;
@@ -19,14 +21,13 @@ typedef struct {
 } heap_t;
 
 
-unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp);
+void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp);
 
-void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp, char* output_char, int* contor, 
-	unsigned long long int* bits);
+void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp);
 
-void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits);
+void write_codification(FILE* codification_fp, char **codification);
 
-char** read_configuration(FILE *codification_fp, unsigned long long int *nbits);
+char** read_configuration(FILE *codification_fp);
 
 void find_codification(node_t *root, char *path, int level, char** codification);
 
@@ -36,6 +37,6 @@ node_t* build_huffman_tree(unsigned long long int* frequency);
 
 node_t* build_huffman_tree_from_codification(char **codification);
 
-void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long int nbits);
+void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root);
 
 #endif /* HUFFMAN_H */

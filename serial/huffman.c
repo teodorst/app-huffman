@@ -15,134 +15,108 @@ node_t* init_node(char data) {
     return node;
 }
 
-void write_decoded_ch(FILE* out_fp, char *result, int length) {
+
+void decode_bytes_for_chunk(node_t *root, FILE *output_fp, char *buffer, int buffer_size, node_t **remainig_node, char* output_buffer, int *output_buffer_size) {
     
-    fwrite(result, length, 1, out_fp);
-    
-}
+    int i;    
 
-int decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nbits, node_t **remainig_node, char* out_buffer) {
-    
-    int i, j;
-    node_t *node = *remainig_node;
-    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1;
-    unsigned long long int count_bits = 0L;
-    unsigned long long int out_buffer_size = 0;
-    int bit;
-    int length = 0;
-
-    for (i = 0; i < nbytes; i++) {
-        for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
-            
-            /* get bit */
-            bit = (buffer[i] >> j) & 1;
-            
-            if (bit == 0) {
-                /* go left in tree*/
-                node = node->left;
-            } else {
-                /* go right in tree */
-                node = node->right;
-            }
-
-            /* depth search from the root */
-            if (node->left == NULL && node->right == NULL) {
-                out_buffer[out_buffer_size++] = node->data;
-                node = root;
-                length ++;
-            }
-
-            count_bits ++;
-        }
-    }
-
-    *remainig_node = node;
-    return length;
-}
-
-void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long int nbits) {
-    size_t nread = 0;
-    unsigned long long int total_bytes = 0L;
-    unsigned long long int nbytes = nbits % 8L == 0L ? nbits / 8L : nbits/8L + 1L; 
-    char *aux_buf = (char *) calloc (CHUNK, sizeof(char));
-    char *result = (char *) calloc (nbytes, sizeof(char));
-    node_t *remainig_node;
-    remainig_node = root;
-
-    int length = 0;
-    int minimum_size = CHUNK * 8;
-    while((nread = fread(aux_buf, 1, CHUNK, in_fp)) > 0) {
-        if (nbits > minimum_size) {
-            length = decode_bytes_for_chunk(root, aux_buf, (CHUNK * 8), &remainig_node, result);
-            nbits -= minimum_size;
+    for (i = 0; i < buffer_size; i++) {
+        if (buffer[i] == '0') {
+            /* go left in tree*/
+            *remainig_node = (*remainig_node)->left;
         } else {
-            length = decode_bytes_for_chunk(root, aux_buf, nbits, &remainig_node, result);
+            /* go right in tree */
+            *remainig_node = (*remainig_node)->right;
         }
         
-        /* write in out file the result for that CHUNK*/
-        write_decoded_ch(out_fp, result, length);
-
-        total_bytes += CHUNK > nread ? nread : CHUNK;
-
-        memset(aux_buf, '\0', CHUNK);
-        memset(result, '\0', nbytes);
-
+        /* depth search from the root */
+        if ((*remainig_node)->left == NULL && (*remainig_node)->right == NULL) {
+            output_buffer[*output_buffer_size] = (*remainig_node)->data;
+            *output_buffer_size += 1;
+            *remainig_node = root;
+            if (*output_buffer_size == CHUNK) {
+                fwrite(output_buffer, sizeof(char), CHUNK, output_fp);
+                memset(output_buffer, '\0', CHUNK);
+                *output_buffer_size = 0;
+            }
+        }   
     }
 
-    free(aux_buf);
-    free(result);
-
-    if (total_bytes < nbytes)
-        printf("less number of bytes %llu\n", total_bytes);
 }
 
-
-unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
+void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root) {
     size_t nread = 0;
-    int chunk_size = 0;
+    char *input_buffer = (char *) calloc (CHUNK, sizeof(char));
+    char *decoded_result = (char *) calloc(CHUNK, sizeof(char));
+    int decoded_result_size = 0;
+    node_t *remainig_node = root;
+
+    while((nread = fread(input_buffer, sizeof(char), CHUNK, in_fp)) > 0) {
+        decode_bytes_for_chunk(root, out_fp, input_buffer, nread, &remainig_node, decoded_result, &decoded_result_size);
+        
+        /* reset buffers for the next chunk */
+        memset(input_buffer, '\0', CHUNK);
+        
+    }
+
+    /* write remaining decoded data */
+    if (decoded_result_size > 0) {
+        fwrite(decoded_result, sizeof(char), decoded_result_size, out_fp);
+    }
+    
+    /* free used memory */
+    free(input_buffer);
+    free(decoded_result);
+
+}
+
+
+void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
+    size_t nread = 0;
     char buf[CHUNK];
-    char output_char = 0;
-    int contor = 7;
-    unsigned long long int bits = 0L;
-
-    while((nread = fread(buf, 1, CHUNK, input_fp)) > 0) {
-        chunk_size = CHUNK > nread ? nread : CHUNK;
-        write_codification_for_chunk(buf, chunk_size, codification, output_fp, &output_char, &contor, &bits);
+    
+    while((nread = fread(buf, sizeof(char), CHUNK, input_fp)) > 0) {
+        write_codification_for_chunk(buf, nread, codification, output_fp);
         memset(buf, '\0', CHUNK);
-    }
-
-    // if there are some bits to write in the last byte.
-    if (contor != 7) {
-        fwrite(&output_char, 1, 1, output_fp);
     }    
-    return bits;
 }
 
 
-void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp, char* output_char, int* contor,
-    unsigned long long int* bits) {
-    int i, j;
+void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp) {
+    int i;
+    char* output_buffer = (char*) malloc(CHUNK);
+    int current_size = 0;
+    char *codif = NULL;
+    int codif_size = 0;
+    int remaining_size  = 0;
+
     for (i = 0; i < chunk_size; i ++) {
-        char *codif = codification[(unsigned int)chunk[i]];
-        for (j = 0; j < strlen(codif); j ++) {
-            *output_char |= (codif[j] - 48) << *contor;
-            *contor -= 1;
-            *bits += 1;
-            if (*contor == -1) {
-                fwrite(output_char, 1, 1, output_fp);
-                *contor = 7;
-                *output_char = 0;
-            }    
+        codif = codification[(unsigned int)chunk[i]];
+        codif_size = strlen(codif);
+        if (current_size + codif_size >= CHUNK) {
+            remaining_size = current_size + codif_size  - CHUNK;
+            strncpy(output_buffer + current_size, codif, codif_size - remaining_size);
+            fwrite(output_buffer, sizeof(char), CHUNK, output_fp);
+            memset(output_buffer, '\0', CHUNK);
+            current_size = remaining_size;
+            if (remaining_size > 0) {
+                strncpy(output_buffer, codif + codif_size - remaining_size, remaining_size);
+            }
         }
+        else {
+            strcpy(output_buffer + current_size, codif);
+            current_size += codif_size;
+        }   
     }
+    fwrite(output_buffer, sizeof(char), current_size, output_fp);
+
+    free(output_buffer);
 }
 
 
-void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits) {
+void write_codification(FILE* codification_fp, char **codification) {
     int i;
     char *output_string = (char*) calloc(MAX_BITS_CODE + 5, sizeof(char));
-
-    fprintf(codification_fp, "%llu\n", nbits);
 
     for (i = 0; i < MAX_BITS_CODE; i ++) {
         if (codification[i] != NULL) {
@@ -155,15 +129,13 @@ void write_codification(FILE* codification_fp, char **codification, unsigned lon
 }
 
 
-char** read_configuration(FILE *codification_fp, unsigned long long int* nbits) {
+char** read_configuration(FILE *codification_fp) {
     char **codification = (char**) calloc(128, sizeof(char*));
     char *line = NULL;
     ssize_t nread;
     char index;
     size_t line_length;
 
-    fscanf(codification_fp, "%llu", nbits);
-    fgetc(codification_fp);
     while ((nread = getline(&line, &line_length, codification_fp)) != -1) {
         if (nread == 1) {
             index = line[0];
