@@ -1,0 +1,4 @@
+*.o
+tests/
+in.in
+test*
