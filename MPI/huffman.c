@@ -75,23 +75,66 @@ void write_codification_for_input_file(char **codification, FILE* input_fp, FILE
     size_t nread = 0;
     char buf[CHUNK];
 
-    
-// daca sunt master distribui 
-if (myrank == 0){
-//	int rank = 0;
-    while((nread = fread(buf, sizeof(char), CHUNK, input_fp)) > 0) {
-//trimit mesaje workerilor cu ce au de prelucrat 
-//modif a i sa primesc ce am codificat - output buffer
-// api fac scrierea
-        write_codification_for_chunk(buf, nread, codification, output_fp);
-        memset(buf, '\0', CHUNK);
-    } 
-}
+        
+    // daca sunt master distribui 
+    if (myrank == 0){
+    // int rank = 0;
+
+    // calcul dimensiun fisier - fseek
+
+    // creare vector in care sa se retina cate chunk-uri va prelucra un anumit procesor + calcul pt fiecare procesor  
+        int *nr_of_chunks = (int *) malloc (nr_proc * sizeof(int));
+
+    // trimit catre celelalte procesoare cate chunk-uri vor prelucra
+        for (i = 1 ; i < nr_proc ; i ++)
+            MPI_Send(nr_of_chunks[i], ..);
+
+        while((nread = fread(buf, sizeof(char), CHUNK, input_fp)) > 0) {
+
+            //cat timp mai am chank-uri le trimit unui anumit procesor
+            while(){
+                // trimite fiecare chunk catre un anumit procesor.
+                MPI_Send(buf_size, ..);
+                MPI_Send(buf, ..);
+            }
+        
+            memset(buf, '\0', CHUNK);
+        }
+
+        //primeste datele de la celelalte procesoare
+        for (i = 1; i < nr_proc ; i++) //pt fiecare procesor
+            // cat timp mai am chunk-uri de primit
+            while(nr_of_chunks[i] > 0){
+                MPI_Recv(output_buffer_size, ..);     // marimea outputului 
+                
+                //alocare memorie buffer 
+
+
+                MPI_Recv(output_buffer, ..);     // outputul in urma encodarii
+
+                // scriere in fisier a outputului
+                
+                // eliberare memorie buffer de output
+     
+            }
+    }
+    else
+    {
+        // primeste numarul de chunk-uri de la master
+        MPI_Recv(nr_of_chunks, ..);
+
+        // primeste chunk-urile si codifica
+        while(nr_of_chunks > 0){
+            MPI_Recv(chunk_size, ..);
+            MPI_Recv(chunk_content, ..);
+            write_codification_for_chunk(buf/*chunk content*/, nread/*chunk size*/, codification, output_fp);
+        }
+    }
    
 }
 
-
-void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp) {
+// in loc de fwrite se va face MPI_Send catre master
+void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp /*nu mai este necesar output_fp aici*/) {
     int i;
     char* output_buffer = (char*) malloc(CHUNK);
     int current_size = 0;
