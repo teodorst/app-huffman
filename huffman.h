@@ -20,6 +20,7 @@ typedef struct {
     int size;
 } heap_t;
 
+node_t* init_node(char data);
 
 void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp);
 

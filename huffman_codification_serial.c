@@ -37,10 +37,10 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     char path[MAX_BITS_CODE];
 
     FILE* input_fp = open_file(input_filename, "r");
-    unsigned long long int* frequecy = compute_frequency(input_fp);
+    unsigned long long int* frequency = compute_frequency(input_fp);
 
     /* build the huffman tree */
-    node_t *root = build_huffman_tree(frequecy);
+    node_t *root = build_huffman_tree(frequency);
 
     /* print the encoded letters */ 
     // print_codes(root, path, 0);
@@ -52,7 +52,14 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     FILE* output_fp = open_file(output_filename, "w");
 
     write_codification_for_input_file(codification, input_fp, output_fp);
-
+    int i = 0;
+    int sum = 0;
+    for ( i = 0 ; i < 128; i ++) {
+        sum += frequency[i];
+        printf("%llu ", frequency[i]);
+    }
+    printf("\n");
+    printf("%d\n", sum);
     fclose(input_fp);
     fclose(output_fp);
 

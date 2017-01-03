@@ -1,8 +1,10 @@
 C=gcc
 CFLAGS=-Wall -g
 
-build: huffman_decodification_serial huffman_codification_serial
+build: huffman_decodification_serial huffman_codification_serial huffman_codification_pthreads
 
+huffman_codification_pthreads: huffman_codification_pthreads.o priority_queue.o frequency.o huffman.o
+	$(CC) $(CFLAGS) -o huffman_codification_pthreads $^
 
 huffman_decodification_serial: huffman_decodification_serial.o priority_queue.o frequency.o huffman.o
 	$(CC) $(CFLAGS) -o huffman_decodification_serial $^
