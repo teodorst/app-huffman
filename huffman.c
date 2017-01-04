@@ -91,7 +91,6 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
     int remaining_size  = 0;
 
     for (i = 0; i < chunk_size; i ++) {
-        fprintf( stderr, "%d \n", (unsigned int)chunk[i]);
         codif = codification[(unsigned int)chunk[i]];
         codif_size = strlen(codif);
         if (current_size + codif_size >= CHUNK) {
