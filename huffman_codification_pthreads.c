@@ -129,13 +129,13 @@ void read_from_file_thread_and_apply_codification(FILE* input_file, char *input_
 }
 
 
-void apply_huffman(char *input_buffer, int start_index, int size, char *output_buffer, char **codifcation) {
+void apply_huffman(char *input_buffer, int start_index, int size, char *output_buffer, char **codification) {
 	int current_index = 0;
 	int i = 0;
 	memset(output_buffer, '\0', 8 * CHUNK);
 	for (i = start_index; i < start_index + size; i ++) {
-		char *codif = codification[input_buffer[i]];
-		strncpy(output_buffer + current_index, codif);
+		char *codif = codification[(unsigned char)input_buffer[i]];
+		strcpy(output_buffer + current_index, codif);
 		current_index += strlen(codif);
 	}
 }

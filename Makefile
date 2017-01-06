@@ -1,10 +1,18 @@
-C=gcc
+CC=gcc
 CFLAGS=-Wall -g
 
-build: all
+build: serial pthreads
 
-all: huffman_serial.o priority_queue.o frequency.o huffman.o
+serial: huffman_serial.o priority_queue.o frequency.o huffman.o
 	$(CC) $(CFLAGS) -o huffman_serial $^
+
+
+pthreads: huffman_codification_pthreads.o frequency.o huffman.o priority_queue.o
+	$(CC) $(CFLAGS) -o huffman_codification_pthreads $^
+
+
+huffman_codification_pthreads.o: huffman_codification_pthreads.c frequency.o huffman.o priority_queue.o
+	$(CC) $(CFLAGS) -c -o $@ huffman_codification_pthreads.c
 
 huffman_serial.o: huffman_serial.c priority_queue.o frequency.o huffman.o
 	$(CC) $(CFLAGS) -c -o $@ huffman_serial.c
@@ -24,4 +32,4 @@ run: huffman_serial
 	./huffman_serial decompress out.out in2.in dictionar
 
 clean:
-	rm *.o huffman_serial
+	rm *.o huffman_serial huffman_codification_pthreads
