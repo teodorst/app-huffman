@@ -40,6 +40,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     char** codification = (char**) calloc(128, sizeof(char*));
 
     char path[MAX_BITS_CODE];
+    unsigned long long int nbits;
 
     FILE* input_fp = open_file(input_filename, "r");
     unsigned long long int* frequecy = compute_frequency(input_fp);
@@ -56,25 +57,26 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     FILE* codification_fp = open_file(codification_filename, "w");
 	FILE* output_fp = open_file(output_filename, "w");
 
-	write_codification_for_input_file(codification, input_fp, output_fp);
-
+	nbits = write_codification_for_input_file(codification, input_fp, output_fp);
 	fclose(input_fp);
 	fclose(output_fp);
 
     /* write codification to file */
-    write_codification(codification_fp, codification);
+    write_codification(codification_fp, codification, nbits);
     fclose(codification_fp);
 
     free_codification_matrix(codification);
     return 0;
 }
 
+
 int huffman_decompress(char* input_filename, char* output_filename, char *codification_filename) {
     printf("decompress\n");
+    unsigned long long int nbits = 0;
 
     FILE* codification_fp = open_file(codification_filename, "r");
 
-    char** codification = read_configuration(codification_fp);
+    char** codification = read_configuration(codification_fp, &nbits);
 
     /* for each codification find the leaf and save it into a buffer */
     node_t* root = build_huffman_tree_from_codification(codification);
@@ -90,7 +92,7 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     printf("Opened files\n");
 
     /* decode the bytes using huffman tree */
-    decode_bytes(input_fp, out_fp, root);
+    decode_bytes(input_fp, out_fp, root, nbits);
 
 
     free_codification_matrix(codification);

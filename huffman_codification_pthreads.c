@@ -181,7 +181,7 @@ void *codification_thread(void *huffman_info_thread) {
 		char** codification = (char**) calloc(128, sizeof(char*));
 		char path[MAX_BITS_CODE];
 		find_codification(*(thread_arg->root_holder), path, 0, codification);
-		write_codification(thread_arg->codification_file, codification);
+		// write_codification(thread_arg->codification_file, codification);
 
 	}
 
