@@ -1,3 +1,5 @@
+#include <omp.h>
+
 #ifndef HUFFMAN_H
 #define HUFFMAN_H
 

@@ -1,3 +1,5 @@
+#include <omp.h>
+
 #ifndef FREQUENCY_H
 #define FREQUENCY_H
 

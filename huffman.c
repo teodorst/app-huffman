@@ -122,6 +122,7 @@ unsigned long long int write_codification_for_input_file(char **codification, FI
 void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp, char* output_char, int* contor,
     unsigned long long int* bits) {
     int i, j;
+
     for (i = 0; i < chunk_size; i ++) {
         char *codif = codification[(unsigned int)chunk[i]];
         for (j = 0; j < strlen(codif); j ++) {
@@ -236,6 +237,9 @@ node_t* build_huffman_tree_from_codification(char **codification) {
     node_t* root = init_node('#');
     node_t* node = root;
     
+    //omp_set_dynamic(0);
+    //mp_set_num_threads(4);
+    #pragma omp parallel for private(i, current_code_index, node, codification_length) shared(codification, root) schedule(static, 500)
     for (i = 0; i < 128; i ++) {
         if (codification[i]) {
             node = root;
