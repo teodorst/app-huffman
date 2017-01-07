@@ -147,7 +147,7 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 
 
 void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_size, char **codification, 
-    char *output_buffer, int *output_buffer_contor, int *bits) {
+    char *output_buffer, int *output_buffer_contor, unsigned int *bits) {
     
     *output_buffer_contor = 0;
     *bits = 0;
@@ -157,11 +157,13 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_siz
     
     for (i = index; i < (index + chunk_size); i ++) {
         char *codif = codification[(unsigned char)chunk[i]];
-        for (j = 0; j < strlen(codif); i ++) {
-            output_char |= (codif[j] - 48) << (contor --);
+        for (j = 0; j < strlen(codif); j ++) {
+            output_char |= (codif[j] - 48) << contor;
+            contor --;
             *bits += 1;
 
             if (contor == -1) {
+                fprintf(stderr, "%d\n", *output_buffer_contor);
                 output_buffer[*output_buffer_contor] = output_char;
                 *output_buffer_contor += 1;
                 output_char = 0;
@@ -183,8 +185,24 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_siz
 */
 
 
+void write_metadata_file_serial(FILE* codification_fp, char **codification, unsigned long long int nbits) {
 
-void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits) {
+    // write codification
+    write_codification(codification_fp, codification);
+
+    // write number of bits
+    fprintf(codification_fp, "%llu\n", nbits);
+}
+
+void write_metadata_file_pthreads(FILE* codification_fp, char **codification, unsigned int chunks_no) {
+    // write codification
+    write_codification(codification_fp, codification);
+
+    // write number of bits
+    fprintf(codification_fp, "%u\n", chunks_no);
+}
+
+void write_codification(FILE* codification_fp, char **codification) {
     int i, codification_length = 0;
     char *output_string = (char*) calloc(MAX_BITS_CODE + 5, sizeof(char));
 
@@ -207,10 +225,6 @@ void write_codification(FILE* codification_fp, char **codification, unsigned lon
         }
     }
     free(output_string);
-
-    // write number of bits
-    fprintf(codification_fp, "%llu\n", nbits);
-
 }
 
 

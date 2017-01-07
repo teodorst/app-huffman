@@ -62,7 +62,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 	fclose(output_fp);
 
     /* write codification to file */
-    write_codification(codification_fp, codification, nbits);
+    write_metadata_file_serial(codification_fp, codification, nbits);
     fclose(codification_fp);
 
     free_codification_matrix(codification);

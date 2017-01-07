@@ -74,6 +74,7 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "priority_queue.h"
 #include "frequency.h"
@@ -91,6 +92,7 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 typedef struct huffman_thread_struct {
 	int thread_id;
 	char* input_buffer;
+	char* output_buffer;
     pthread_barrier_t *frequency_barrier;
     int *nread;
 	node_t** root_holder;
@@ -120,23 +122,19 @@ void read_from_file_thread(FILE* input_file, char *input_buffer, int* nread, uns
 }
 
 
-void read_from_file_thread_and_apply_codification(FILE* input_file, char *input_buffer, int* nread) {
+void read_from_file_thread_and_apply_codification(FILE* input_file, char *input_buffer, int* nread, FILE* output_file,
+	char *output_buffer, char **codification, FILE* metadata_file) {
+	
 	memset(input_buffer, '\0', CHUNK);
 	*nread = fread(input_buffer, sizeof(char), CHUNK, input_file);
 	if (*nread < CHUNK) {
-
-	}
-}
-
-
-void apply_huffman(char *input_buffer, int start_index, int size, char *output_buffer, char **codification) {
-	int current_index = 0;
-	int i = 0;
-	memset(output_buffer, '\0', 8 * CHUNK);
-	for (i = start_index; i < start_index + size; i ++) {
-		char *codif = codification[(unsigned char)input_buffer[i]];
-		strcpy(output_buffer + current_index, codif);
-		current_index += strlen(codif);
+		int output_buffer_contor = 0;
+		char output_buffer[*nread];
+		unsigned int nbits = 0;
+		fprintf(stderr, "%d\n", *nread);
+		write_codification_for_chunk_pthreads(input_buffer, 0, *nread, codification, output_buffer, &output_buffer_contor, &nbits);
+		fwrite(output_buffer, 1, output_buffer_contor, output_file);
+		fprintf(metadata_file, "%u\n", nbits);
 	}
 }
 
@@ -145,7 +143,7 @@ void *codification_thread(void *huffman_info_thread) {
 	unsigned long long int* frequency = thread_arg->frequencies[thread_arg->thread_id];
 	int size = CHUNK / NUM_THREADS;
 	int index = (thread_arg->thread_id) * size;
-
+	
 	// printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, size, thread_arg->frequencies[thread_arg->thread_id]);
 	
 	// first read
@@ -156,12 +154,10 @@ void *codification_thread(void *huffman_info_thread) {
 	pthread_barrier_wait(thread_arg->frequency_barrier);
 	while(*(thread_arg->nread) == CHUNK) {
 		compute_frequency_for_chunk(thread_arg->input_buffer, index, size, frequency);
-		printf("%d!!!\n", *(thread_arg->nread));
 		// only master thread will run here
 		pthread_barrier_wait(thread_arg->frequency_barrier);
 		if (thread_arg->thread_id == MASTER_THREAD) {
 			read_from_file_thread(thread_arg->input_file, thread_arg->input_buffer, thread_arg->nread, frequency);
-			// printf("%d\n", *(thread_arg->nread));
 		}
 		pthread_barrier_wait(thread_arg->frequency_barrier);
 	}
@@ -174,14 +170,28 @@ void *codification_thread(void *huffman_info_thread) {
 				frequency[j] += thread_arg->frequencies[i][j];
 			}
 		}
+		unsigned int input_file_size = 0;
+		unsigned int chunks_no = 0;
+		input_file_size = ftell(thread_arg->input_file);
+
+		chunks_no = input_file_size % CHUNK == 0 ? (input_file_size / CHUNK) : (input_file_size / CHUNK + 1);
+
 		fseek(thread_arg->input_file, 0, SEEK_SET);
-		
+		printf("%d\n", input_file_size);
+
 		// create huffman_tree
 		*(thread_arg->root_holder) = build_huffman_tree(frequency);
 		char** codification = (char**) calloc(128, sizeof(char*));
 		char path[MAX_BITS_CODE];
 		find_codification(*(thread_arg->root_holder), path, 0, codification);
-		// write_codification(thread_arg->codification_file, codification);
+		write_metadata_file_pthreads(thread_arg->codification_file, codification, chunks_no);
+
+		// read first chunk
+
+		read_from_file_thread_and_apply_codification(thread_arg->input_file, 
+			thread_arg->input_buffer, thread_arg->nread, thread_arg->output_file, thread_arg->output_buffer,
+			codification, thread_arg->codification_file);
+		
 
 	}
 
@@ -190,11 +200,12 @@ void *codification_thread(void *huffman_info_thread) {
 	// codifcation of input
 
 
-
 	pthread_exit(NULL);
 }
 
 void huffman_codification_pthreads(char *input_file_name, char* output_file_name, char* codification_file_name) {
+	fprintf(stderr, "%s %s %s\n", input_file_name, output_file_name, codification_file_name);
+	
 	// open files
 	FILE* input_file = open_file(input_file_name, "r");
 	FILE* output_file = open_file(output_file_name, "w");
@@ -213,6 +224,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	pthread_t threads[NUM_THREADS];
 	huffman_thread_struct* arg_struct;
 	char input_file_buffer[CHUNK];
+	char output_file_buffer[CHUNK];
 	unsigned long long int **frequencies;
 
 
@@ -235,6 +247,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 		arg_struct->root_holder = root_holder;
 		arg_struct->input_file = input_file;
 		arg_struct->output_file = output_file;
+		arg_struct->output_buffer = output_file_buffer;
 		arg_struct->codification_file = codification_file;
 		arg_struct->frequency_barrier = &frequency_barrier;
 		arg_struct->nread = &nread;
@@ -263,6 +276,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 int main (int argc, char *argv[]) {
 	if (argc == 4) {
+		fprintf(stderr, "%s %s %s\n", argv[INPUT_FILE], argv[OUTPUT_FILE], argv[CODIFICATION]);
 		huffman_codification_pthreads(argv[INPUT_FILE], argv[OUTPUT_FILE], argv[CODIFICATION]);
 	}
 	else {

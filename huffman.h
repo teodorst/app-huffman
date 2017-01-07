@@ -32,10 +32,14 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 
 
 void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_size, char **codification, 
-    char *output_buffer, int *output_buffer_contor, int *bits);
+    char *output_buffer, int *output_buffer_contor, unsigned int *bits);
 
 
-void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits);
+void write_metadata_file_serial(FILE* codification_fp, char **codification, unsigned long long int nbits);
+
+void write_metadata_file_pthreads(FILE* codification_fp, char **codification, unsigned int chunks_no);
+
+void write_codification(FILE* codification_fp, char **codification);
 
 
 char** read_configuration(FILE *codification_fp, unsigned long long int *nbits);
