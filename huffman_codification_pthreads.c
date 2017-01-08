@@ -177,10 +177,10 @@ void *codification_thread(void *huffman_info_thread) {
 		char path[MAX_BITS_CODE];
 		find_codification(*(thread_arg->root_holder), path, 0, codification);
 
-		unsigned long long int sum = 0;
-		for (i = 0; i < 128; i ++) {
-			sum += frequency[i];
-		}
+		// unsigned long long int sum = 0;
+		// for (i = 0; i < 128; i ++) {
+		// 	sum += frequency[i];
+		// }
 
 	}
 
@@ -253,6 +253,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	// compute input file size
 	fseek(input_file, 0, SEEK_END);
 	unsigned long long int size = ftell(input_file);
+	unsigned long long int thread_size = size / NUM_THREADS;
 	fseek(input_file, 0, SEEK_SET);
 
 	// barriers
@@ -318,6 +319,10 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 	for (i = 0; i < NUM_THREADS; i ++) {
 		pthread_join(threads[i], NULL);
+	}
+
+	for (i = 0; i < NUM_THREADS; i ++) {
+		fwrite(output_file_buffer + i * thread_size, 1, output_buffer_contors[i], output_file);
 	}
 
 	// close files
