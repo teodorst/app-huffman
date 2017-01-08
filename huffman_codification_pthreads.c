@@ -86,7 +86,7 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 #define OUTPUT_FILE 	2
 #define CODIFICATION 	3
 
-#define NUM_THREADS 	2
+#define NUM_THREADS 	4
 #define MASTER_THREAD   0
 
 typedef struct huffman_thread_struct {
