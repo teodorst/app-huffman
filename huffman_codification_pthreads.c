@@ -143,7 +143,7 @@ void *codification_thread(void *huffman_info_thread) {
 	
 	unsigned long long int thread_size = thread_arg->input_buffer_size / NUM_THREADS;
 	int index = (thread_arg->thread_id) * thread_size;
-	unsigned long long int upper_limit = index + thread_size;
+	int upper_limit = index + thread_size;
 	
 	int *output_buffer_contor = thread_arg->output_buffer_contors + thread_arg->thread_id;
 	unsigned long long int *nbits = thread_arg->nbits_buffer + thread_arg->thread_id;
@@ -154,7 +154,7 @@ void *codification_thread(void *huffman_info_thread) {
 	char *input_buffer = thread_arg->input_buffer;
 	char *output_buffer = thread_arg->output_buffer;
 
-	// printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, size, thread_arg->frequencies[thread_arg->thread_id]);
+	printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, upper_limit);
 	int i, j;
 
 	// compute frequency
@@ -186,9 +186,6 @@ void *codification_thread(void *huffman_info_thread) {
 
 	pthread_barrier_wait(thread_arg->frequency_barrier);
 
-
-	*output_buffer_contor = 0;
-	*nbits = 0;
 	
 	write_codification_for_chunk_pthreads(input_buffer, index, upper_limit, codification, output_buffer, output_buffer_contor, nbits);
 
