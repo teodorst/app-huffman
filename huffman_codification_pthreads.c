@@ -93,17 +93,13 @@ typedef struct huffman_thread_struct {
 	int thread_id;
 	char* input_buffer;
 	char* output_buffer;
+	unsigned long long int input_buffer_size;
     pthread_barrier_t *frequency_barrier;
-    int *nread;
-	node_t** root_holder;
-	FILE* input_file;
-	FILE* output_file;
+    node_t** root_holder;
 	unsigned int *nbits_buffer;
 	int* output_buffer_contors;
-	FILE* codification_file;
 	unsigned long long int **frequencies;
 	char **codification;
-
 } huffman_thread_struct;
 
 
@@ -145,115 +141,95 @@ void *codification_thread(void *huffman_info_thread) {
 	huffman_thread_struct* thread_arg = (huffman_thread_struct* ) huffman_info_thread;
 	unsigned long long int* frequency = thread_arg->frequencies[thread_arg->thread_id];
 	
-	int size = CHUNK / NUM_THREADS;
-	int index = (thread_arg->thread_id) * size;
-		
+	unsigned long long int thread_size = thread_arg->input_buffer_size / NUM_THREADS;
+	int index = (thread_arg->thread_id) * thread_size;
+	unsigned long long int upper_limit = index + thread_size;
+	
 	int* output_buffer_contor = thread_arg->output_buffer_contors + thread_arg->thread_id;
 	unsigned int* nbits = thread_arg->nbits_buffer + thread_arg->thread_id;
 	
 	char **codification = thread_arg->codification;
 
-	char *writeable_buffer = NULL;
-	char *writeable_metadata_buffer = NULL;
+	char *input_buffer = thread_arg->input_buffer;
+	char *output_buffer = thread_arg->output_buffer;
 
 	// printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, size, thread_arg->frequencies[thread_arg->thread_id]);
-	
-	// first read
-	if (thread_arg->thread_id == MASTER_THREAD) {
-		writeable_buffer = (char*) calloc(CHUNK, sizeof(char));
-		writeable_metadata_buffer = (char*) calloc(80, sizeof(char));
-
-		read_from_file_thread(thread_arg->input_file, thread_arg->input_buffer, thread_arg->nread, frequency);
-	}
+	int i, j;
+	for (i = index; i < upper_limit; i ++) {
+		frequency[(unsigned char)input_buffer[i]] ++;
+	} 
 	
 	pthread_barrier_wait(thread_arg->frequency_barrier);
-	while(*(thread_arg->nread) == CHUNK) {
-		compute_frequency_for_chunk(thread_arg->input_buffer, index, size, frequency);
-		// only master thread will run here
-		pthread_barrier_wait(thread_arg->frequency_barrier);
-		if (thread_arg->thread_id == MASTER_THREAD) {
-			read_from_file_thread(thread_arg->input_file, thread_arg->input_buffer, thread_arg->nread, frequency);
-		}
-		pthread_barrier_wait(thread_arg->frequency_barrier);
-	}
-	
+
 	// sum up all frequencies and rewind input file pointer
-	int i, j;
 	if (thread_arg->thread_id == MASTER_THREAD) {
 		for (j = 0; j < 128; j ++) {
 			for (i = 1; i < NUM_THREADS; i ++) {
 				frequency[j] += thread_arg->frequencies[i][j];
 			}
 		}
-		unsigned int input_file_size = 0;
-		unsigned int chunks_no = 0;
-		input_file_size = ftell(thread_arg->input_file);
-
-		chunks_no = input_file_size % CHUNK == 0 ? (input_file_size / CHUNK) : (input_file_size / CHUNK + 1);
-
-		fseek(thread_arg->input_file, 0, SEEK_SET);
 
 		// create huffman_tree
 		*(thread_arg->root_holder) = build_huffman_tree(frequency);
 		char path[MAX_BITS_CODE];
 		find_codification(*(thread_arg->root_holder), path, 0, codification);
-		write_metadata_file_pthreads(thread_arg->codification_file, codification, chunks_no);
 
-		// read first chunk
-
-		read_from_file_thread_and_apply_codification(thread_arg->input_file, 
-			thread_arg->input_buffer, thread_arg->nread, thread_arg->output_file, thread_arg->output_buffer,
-			codification, thread_arg->codification_file);
+		unsigned long long int sum = 0;
+		for (i = 0; i < 128; i ++) {
+			sum += frequency[i];
+			printf("%llu\n", sum);
+		}
 
 	}
 
 	pthread_barrier_wait(thread_arg->frequency_barrier);
 
-	// codifcation of input
 
-	*output_buffer_contor = 0;
-	*nbits = 0;
+	// // codifcation of input
+
+	// *output_buffer_contor = 0;
+	// *nbits = 0;
 	
-	int writeable_buffer_index = 0;
-	while(*(thread_arg->nread) == CHUNK) {
+	// int writeable_buffer_index = 0;
+	// while(*(thread_arg->nread) == CHUNK) {
 
-		// fprintf(stderr, "%d\n", *nread);
-		memset(thread_arg->output_buffer + index, '\0', size);
-		write_codification_for_chunk_pthreads(thread_arg->input_buffer, index, size, codification, thread_arg->output_buffer, output_buffer_contor, nbits);
+	// 	// fprintf(stderr, "%d\n", *nread);
+	// 	memset(thread_arg->output_buffer + index, '\0', size);
+	// 	write_codification_for_chunk_pthreads(thread_arg->input_buffer, index, size, codification, thread_arg->output_buffer, output_buffer_contor, nbits);
 		
-		pthread_barrier_wait(thread_arg->frequency_barrier);
+	// 	pthread_barrier_wait(thread_arg->frequency_barrier);
 
 		
-		if (thread_arg->thread_id == MASTER_THREAD) {
-			// char writeable_metadata_aux[100];
-			// writeable_buffer_index = 0;	
-			for (i = 0; i < NUM_THREADS; i ++ ) {
-				// strncpy(writeable_buffer + writeable_buffer_index, thread_arg->output_buffer + (i * size), thread_arg->output_buffer_contors[i]);
-				// writeable_buffer_index += thread_arg->output_buffer_contors[i];
-				// sprintf(writeable_metadata_aux, "%u\n", *nbits);
-				// strcat(writeable_metadata_buffer, writeable_metadata_aux);
-				// memset(writeable_metadata_aux, 0, 20);
+	// 	if (thread_arg->thread_id == MASTER_THREAD) {
+	// 		// char writeable_metadata_aux[100];
+	// 		// writeable_buffer_index = 0;	
+	// 		for (i = 0; i < NUM_THREADS; i ++ ) {
+	// 			// strncpy(writeable_buffer + writeable_buffer_index, thread_arg->output_buffer + (i * size), thread_arg->output_buffer_contors[i]);
+	// 			// writeable_buffer_index += thread_arg->output_buffer_contors[i];
+	// 			// sprintf(writeable_metadata_aux, "%u\n", *nbits);
+	// 			// strcat(writeable_metadata_buffer, writeable_metadata_aux);
+	// 			// memset(writeable_metadata_aux, 0, 20);
 
-				fwrite(thread_arg->output_buffer + (i * size), 1, thread_arg->output_buffer_contors[i], thread_arg->output_file);
-				fprintf(thread_arg->codification_file, "%u\n", thread_arg->nbits_buffer[i]);	
-			}
+	// 			fwrite(thread_arg->output_buffer + (i * size), 1, thread_arg->output_buffer_contors[i], thread_arg->output_file);
+	// 			fprintf(thread_arg->codification_file, "%u\n", thread_arg->nbits_buffer[i]);	
+	// 		}
 			
-			// fwrite(writeable_buffer, 1, writeable_buffer_index, thread_arg->output_file);
-			// fprintf(thread_arg->codification_file, "%s", writeable_metadata_buffer);
-			// memset(writeable_buffer, 0, CHUNK);
+	// 		// fwrite(writeable_buffer, 1, writeable_buffer_index, thread_arg->output_file);
+	// 		// fprintf(thread_arg->codification_file, "%s", writeable_metadata_buffer);
+	// 		// memset(writeable_buffer, 0, CHUNK);
 
-			read_from_file_thread_and_apply_codification(
-				thread_arg->input_file, thread_arg->input_buffer, thread_arg->nread, 
-				thread_arg->output_file, thread_arg->output_buffer,
-				codification, thread_arg->codification_file
-			);
+	// 		read_from_file_thread_and_apply_codification(
+	// 			thread_arg->input_file, thread_arg->input_buffer, thread_arg->nread, 
+	// 			thread_arg->output_file, thread_arg->output_buffer,
+	// 			codification, thread_arg->codification_file
+	// 		);
 
-		}
+	// 	}
 
 
-		pthread_barrier_wait(thread_arg->frequency_barrier);
+	// 	pthread_barrier_wait(thread_arg->frequency_barrier);
 
-	}
+	// }
 
 	pthread_exit(NULL);
 }
@@ -271,73 +247,70 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	unsigned long long int size = ftell(input_file);
 	fseek(input_file, 0, SEEK_SET);
 
-	char input_buffer[size];
-	memset(input_buffer, 0, size);
-	fread(input_buffer, size, 1, input_file);
+	// barriers
+	pthread_barrier_t frequency_barrier;
+	if(pthread_barrier_init(&frequency_barrier, NULL, NUM_THREADS))
+    {
+        printf("Could not create a barrier\n");
+        exit(-1);
+    }
+
+	int i, ret;
+	pthread_t threads[NUM_THREADS];
+	huffman_thread_struct* arg_struct;
 	
-	printf("%llu\n", size);
+	char input_file_buffer[size];
+	char output_file_buffer[size];
 
-	printf("%c %c %c %c\n", input_buffer[312], input_buffer[1012], input_buffer[612], input_buffer[412], );
-	// // barriers
-	// pthread_barrier_t frequency_barrier;
-	// if(pthread_barrier_init(&frequency_barrier, NULL, NUM_THREADS))
- //    {
- //        printf("Could not create a barrier\n");
- //        exit(-1);
- //    }
-
-	// int i, ret;
-	// int nread = 0;
-	// pthread_t threads[NUM_THREADS];
-	// huffman_thread_struct* arg_struct;
-	// char input_file_buffer[CHUNK];
-	// char output_file_buffer[CHUNK];
-	// unsigned long long int **frequencies;
-	// int *output_buffer_contors = (int *) calloc(NUM_THREADS, sizeof(int));
-	// unsigned int *nbits_buffer = (unsigned int *) calloc(NUM_THREADS, sizeof(unsigned int));
-	// char** codification = (char**) calloc(128, sizeof(char*));
+	
+	int *output_buffer_contors = (int *) calloc(NUM_THREADS, sizeof(int));
+	unsigned int *nbits_buffer = (unsigned int *) calloc(NUM_THREADS, sizeof(unsigned int));
+	
+	char** codification = (char**) calloc(128, sizeof(char*));
 
 
-	// // init tree placeholder
-	// node_t **root_holder = (node_t**) malloc(sizeof(node_t*));
+	// read input file //
+	size_t nread = fread(input_file_buffer, 1, size, input_file);
 
 
-	// // init frequencies matrix
-	// frequencies = (unsigned long long int **) malloc(NUM_THREADS * sizeof(unsigned long long int*));
-	// for (i = 0; i < NUM_THREADS; i ++) {
-	// 	frequencies[i] = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
-	// }
+	// init tree placeholder
+	node_t **root_holder = (node_t**) malloc(sizeof(node_t*));
 
 
-	// // create threads
-	// for (i = 0; i < NUM_THREADS; i ++) {
-	// 	// create argument structure
-	// 	arg_struct = (huffman_thread_struct*) malloc(sizeof(huffman_thread_struct));
-	// 	arg_struct->thread_id = i;
-	// 	arg_struct->input_buffer = input_file_buffer;
-	// 	arg_struct->root_holder = root_holder;
-	// 	arg_struct->input_file = input_file;
-	// 	arg_struct->output_file = output_file;
-	// 	arg_struct->output_buffer = output_file_buffer;
-	// 	arg_struct->output_buffer_contors = output_buffer_contors;
-	// 	arg_struct->nbits_buffer = nbits_buffer;
-	// 	arg_struct->codification_file = codification_file;
-	// 	arg_struct->frequency_barrier = &frequency_barrier;
-	// 	arg_struct->nread = &nread;
-	// 	arg_struct->frequencies = frequencies;
-	// 	arg_struct->codification = codification;
+	// init frequencies matrix
+	unsigned long long int **frequencies;
+	frequencies = (unsigned long long int **) malloc(NUM_THREADS * sizeof(unsigned long long int*));
+	for (i = 0; i < NUM_THREADS; i ++) {
+		frequencies[i] = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
+	}
 
-	// 	ret = pthread_create(&threads[i], NULL, codification_thread, (void *) arg_struct);
-	// 	if (ret) {
-	// 		printf("Error; return code from pthread_create() is %d\n", ret);
-	// 		exit(-1);
-	// 	}
 
-	// }
+	// create threads
+	for (i = 0; i < NUM_THREADS; i ++) {
+		// create argument structure
+		arg_struct = (huffman_thread_struct*) malloc(sizeof(huffman_thread_struct));
+		arg_struct->thread_id = i;
+		arg_struct->root_holder = root_holder;
+		arg_struct->input_buffer = input_file_buffer;
+		arg_struct->output_buffer = output_file_buffer;
+		arg_struct->output_buffer_contors = output_buffer_contors;
+		arg_struct->nbits_buffer = nbits_buffer;
+		arg_struct->frequency_barrier = &frequency_barrier;
+		arg_struct->frequencies = frequencies;
+		arg_struct->codification = codification;
+		arg_struct->input_buffer_size = size;
 
-	// for (i = 0; i < NUM_THREADS; i ++) {
-	// 	pthread_join(threads[i], NULL);
-	// }
+		ret = pthread_create(&threads[i], NULL, codification_thread, (void *) arg_struct);
+		if (ret) {
+			printf("Error; return code from pthread_create() is %d\n", ret);
+			exit(-1);
+		}
+
+	}
+
+	for (i = 0; i < NUM_THREADS; i ++) {
+		pthread_join(threads[i], NULL);
+	}
 
 	// close files
 	fclose(input_file);
