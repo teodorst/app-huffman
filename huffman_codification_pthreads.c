@@ -88,7 +88,7 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 #define OUTPUT_FILE 	2
 #define CODIFICATION 	3
 
-#define NUM_THREADS 	2
+#define NUM_THREADS 	8
 #define MASTER_THREAD   0
 
 
@@ -181,13 +181,13 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 	clock_t start = clock();
 	
-	// create threads
+	// create thrxeads
 	for (i = 0; i < NUM_THREADS; i ++) {
 		// create argument structure
 		arg_struct = (huffman_thread_struct*) malloc(sizeof(huffman_thread_struct));
 		arg_struct->thread_id = i;
 		arg_struct->input_buffer = input_file_buffer;
-		arg_struct->output_buffer = output_file_buffer;
+		arg_struct->output_buffer = output_file_buffer + i * thread_size;
 		arg_struct->output_buffer_contors = output_buffer_contors;
 		arg_struct->nbits_buffer = nbits_buffer;
 		arg_struct->codification = codification;

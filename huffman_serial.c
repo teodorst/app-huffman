@@ -39,31 +39,62 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     
     char** codification = (char**) calloc(128, sizeof(char*));
 
-    char path[MAX_BITS_CODE];
-    unsigned long long int nbits;
-
     FILE* input_fp = open_file(input_filename, "r");
-    unsigned long long int* frequecy = compute_frequency(input_fp);
+    FILE* codification_fp = open_file(codification_filename, "w");
+    FILE* output_fp = open_file(output_filename, "w");
 
-    /* build the huffman tree */
-    node_t *root = build_huffman_tree(frequecy);
+    // compute input file size
+    fseek(input_fp, 0, SEEK_END);
+    unsigned long long int size = ftell(input_fp);
+    fseek(input_fp, 0, SEEK_SET);
+
+    int i, ret;
+    char input_file_buffer[size];
+    char output_file_buffer[size];
+
+    // read input file //
+    fread(input_file_buffer, 1, size, input_fp);
+
+    unsigned long long int *frequency = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
+
+    // compute frequency
+    for (i = 0; i < size; i ++) {
+        frequency[(unsigned char)input_file_buffer[i]] ++;
+    } 
+    
+    // create huffman_tree
+    node_t* root_holder = build_huffman_tree(frequency);
+    char path[MAX_BITS_CODE];
+    find_codification(root_holder, path, 0, codification);
+
+    int output_buffer_contor = 0;
+    char output_char = 0;
+    int contor = 7;
+    unsigned long long int bits = 0;
+
+    write_codification_for_chunk(input_file_buffer, size, codification, output_file_buffer, &output_buffer_contor, &output_char, &contor, &bits);
+
+    fwrite(output_file_buffer, 1, output_buffer_contor, output_fp);
+
+//
+
+    // unsigned long long int* frequecy = compute_frequency(input_fp);
+
+    //  build the huffman tree 
+    // node_t *root = build_huffman_tree(frequecy);
 
 	/* print the encoded letters */ 
     // print_codes(root, path, 0);
     
-    find_codification(root, path, 0, codification);
+    // find_codification(root, path, 0, codification);
 
-
-    FILE* codification_fp = open_file(codification_filename, "w");
-	FILE* output_fp = open_file(output_filename, "w");
-
-	nbits = write_codification_for_input_file(codification, input_fp, output_fp);
+	// nbits = write_codification_for_input_file(codification, input_fp, output_fp);
 	fclose(input_fp);
 	fclose(output_fp);
+    fclose(codification_fp);
 
     /* write codification to file */
-    write_metadata_file_serial(codification_fp, codification, nbits);
-    fclose(codification_fp);
+    // write_metadata_file_serial(codification_fp, codification, nbits);
 
     free_codification_matrix(codification);
     return 0;
