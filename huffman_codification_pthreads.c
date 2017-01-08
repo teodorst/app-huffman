@@ -137,7 +137,6 @@ void *codification_thread(void *huffman_info_thread) {
 }
 
 void huffman_codification_pthreads(char *input_file_name, char* output_file_name, char* codification_file_name) {
-	fprintf(stderr, "%s %s %s\n", input_file_name, output_file_name, codification_file_name);
 	
 	// open files
 	FILE* input_file = open_file(input_file_name, "r");
@@ -187,7 +186,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 		arg_struct = (huffman_thread_struct*) malloc(sizeof(huffman_thread_struct));
 		arg_struct->thread_id = i;
 		arg_struct->input_buffer = input_file_buffer;
-		arg_struct->output_buffer = output_file_buffer + i * thread_size;
+		arg_struct->output_buffer = output_file_buffer;
 		arg_struct->output_buffer_contors = output_buffer_contors;
 		arg_struct->nbits_buffer = nbits_buffer;
 		arg_struct->codification = codification;
