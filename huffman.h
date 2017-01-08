@@ -31,8 +31,8 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
     int *output_buffer_contor, char* output_char, int* contor, unsigned long long int* bits);
 
 
-void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_size, char **codification, 
-    char *output_buffer, int *output_buffer_contor, unsigned int *bits);
+void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_limit, char **codification, 
+    char *output_buffer, int *output_buffer_contor, unsigned long long int* bits);
 
 
 void write_metadata_file_serial(FILE* codification_fp, char **codification, unsigned long long int nbits);

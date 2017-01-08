@@ -96,7 +96,7 @@ typedef struct huffman_thread_struct {
 	unsigned long long int input_buffer_size;
     pthread_barrier_t *frequency_barrier;
     node_t** root_holder;
-	unsigned int *nbits_buffer;
+	unsigned long long int *nbits_buffer;
 	int* output_buffer_contors;
 	unsigned long long int **frequencies;
 	char **codification;
@@ -113,29 +113,29 @@ FILE* open_file(char *filename, char *mode) {
 }
 
 
-void read_from_file_thread(FILE* input_file, char *input_buffer, int* nread, unsigned long long int* frequency) {
-	memset(input_buffer, '\0', CHUNK);
-	*nread = fread(input_buffer, sizeof(char), CHUNK, input_file);
-	if (*nread < CHUNK) {
-		compute_frequency_for_chunk(input_buffer, 0, *nread, frequency);
-	}
-}
+// void read_from_file_thread(FILE* input_file, char *input_buffer, int* nread, unsigned long long int* frequency) {
+// 	memset(input_buffer, '\0', CHUNK);
+// 	*nread = fread(input_buffer, sizeof(char), CHUNK, input_file);
+// 	if (*nread < CHUNK) {
+// 		compute_frequency_for_chunk(input_buffer, 0, *nread, frequency);
+// 	}
+// }
 
 
-void read_from_file_thread_and_apply_codification(FILE* input_file, char *input_buffer, int* nread, FILE* output_file,
-	char *output_buffer, char **codification, FILE* metadata_file) {
+// void read_from_file_thread_and_apply_codification(FILE* input_file, char *input_buffer, int* nread, FILE* output_file,
+// 	char *output_buffer, char **codification, FILE* metadata_file) {
 	
-	memset(input_buffer, '\0', CHUNK);
-	*nread = fread(input_buffer, sizeof(char), CHUNK, input_file);
-	if (*nread < CHUNK) {
-		int output_buffer_contor = 0;
-		unsigned int nbits = 0;
-		memset(output_buffer, 0, CHUNK);
-		write_codification_for_chunk_pthreads(input_buffer, 0, *nread, codification, output_buffer, &output_buffer_contor, &nbits);
-		fwrite(output_buffer, 1, output_buffer_contor, output_file);
-		fprintf(metadata_file, "%u\n", nbits);
-	}
-}
+// 	memset(input_buffer, '\0', CHUNK);
+// 	*nread = fread(input_buffer, sizeof(char), CHUNK, input_file);
+// 	if (*nread < CHUNK) {
+// 		int output_buffer_contor = 0;
+// 		unsigned int nbits = 0;
+// 		memset(output_buffer, 0, CHUNK);
+// 		write_codification_for_chunk_pthreads(input_buffer, 0, *nread, codification, output_buffer, &output_buffer_contor, &nbits);
+// 		fwrite(output_buffer, 1, output_buffer_contor, output_file);
+// 		fprintf(metadata_file, "%u\n", nbits);
+// 	}
+// }
 
 void *codification_thread(void *huffman_info_thread) {
 	huffman_thread_struct* thread_arg = (huffman_thread_struct* ) huffman_info_thread;
@@ -145,8 +145,9 @@ void *codification_thread(void *huffman_info_thread) {
 	int index = (thread_arg->thread_id) * thread_size;
 	unsigned long long int upper_limit = index + thread_size;
 	
-	int* output_buffer_contor = thread_arg->output_buffer_contors + thread_arg->thread_id;
-	unsigned int* nbits = thread_arg->nbits_buffer + thread_arg->thread_id;
+	int *output_buffer_contor = thread_arg->output_buffer_contors + thread_arg->thread_id;
+	unsigned long long int *nbits = thread_arg->nbits_buffer + thread_arg->thread_id;
+
 	
 	char **codification = thread_arg->codification;
 
@@ -155,6 +156,8 @@ void *codification_thread(void *huffman_info_thread) {
 
 	// printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, size, thread_arg->frequencies[thread_arg->thread_id]);
 	int i, j;
+
+	// compute frequency
 	for (i = index; i < upper_limit; i ++) {
 		frequency[(unsigned char)input_buffer[i]] ++;
 	} 
@@ -177,12 +180,17 @@ void *codification_thread(void *huffman_info_thread) {
 		unsigned long long int sum = 0;
 		for (i = 0; i < 128; i ++) {
 			sum += frequency[i];
-			printf("%llu\n", sum);
 		}
 
 	}
 
 	pthread_barrier_wait(thread_arg->frequency_barrier);
+
+
+	*output_buffer_contor = 0;
+	*nbits = 0;
+	
+	write_codification_for_chunk_pthreads(input_buffer, index, upper_limit, codification, output_buffer, output_buffer_contor, nbits);
 
 
 	// // codifcation of input
@@ -263,8 +271,8 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	char output_file_buffer[size];
 
 	
-	int *output_buffer_contors = (int *) calloc(NUM_THREADS, sizeof(int));
-	unsigned int *nbits_buffer = (unsigned int *) calloc(NUM_THREADS, sizeof(unsigned int));
+	int *output_buffer_contors = (int *) malloc(NUM_THREADS * sizeof(int));
+	unsigned long long int *nbits_buffer = (unsigned long long int *) malloc(NUM_THREADS * sizeof(unsigned long long int));
 	
 	char** codification = (char**) calloc(128, sizeof(char*));
 

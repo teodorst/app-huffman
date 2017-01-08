@@ -146,8 +146,8 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 }
 
 
-void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_size, char **codification, 
-    char *output_buffer, int *output_buffer_contor, unsigned int *bits) {
+void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_limit, char **codification, 
+    char *output_buffer, int *output_buffer_contor, unsigned long long int *bits) {
     
     *output_buffer_contor = 0;
     *bits = 0;
@@ -155,7 +155,7 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_siz
     int i, j;
     char output_char = 0;
     
-    for (i = index; i < (index + chunk_size); i ++) {
+    for (i = index; i < upper_limit; i ++) {
         char *codif = codification[(unsigned int)chunk[i]];
         for (j = 0; j < strlen(codif); j ++) {
             output_char |= (codif[j] - 48) << contor;
