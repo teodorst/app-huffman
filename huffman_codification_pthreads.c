@@ -225,22 +225,22 @@ void *codification_thread(void *huffman_info_thread) {
 
 		
 		if (thread_arg->thread_id == MASTER_THREAD) {
-			// char writeable_metadata_aux[100];
-			// writeable_buffer_index = 0;	
+			char writeable_metadata_aux[100];
+			writeable_buffer_index = 0;	
 			for (i = 0; i < NUM_THREADS; i ++ ) {
-				// strncpy(writeable_buffer + writeable_buffer_index, thread_arg->output_buffer + (i * size), thread_arg->output_buffer_contors[i]);
-				// writeable_buffer_index += thread_arg->output_buffer_contors[i];
-				// sprintf(writeable_metadata_aux, "%u\n", *nbits);
-				// strcat(writeable_metadata_buffer, writeable_metadata_aux);
-				// memset(writeable_metadata_aux, 0, 20);
+				strncpy(writeable_buffer + writeable_buffer_index, thread_arg->output_buffer + (i * size), thread_arg->output_buffer_contors[i]);
+				writeable_buffer_index += thread_arg->output_buffer_contors[i];
+				sprintf(writeable_metadata_aux, "%u\n", *nbits);
+				strcat(writeable_metadata_buffer, writeable_metadata_aux);
+				memset(writeable_metadata_aux, 0, 20);
 
-				fwrite(thread_arg->output_buffer + (i * size), 1, thread_arg->output_buffer_contors[i], thread_arg->output_file);
-				fprintf(thread_arg->codification_file, "%u\n", thread_arg->nbits_buffer[i]);	
+				// fwrite(thread_arg->output_buffer + (i * size), 1, thread_arg->output_buffer_contors[i], thread_arg->output_file);
+				// fprintf(thread_arg->codification_file, "%u\n", thread_arg->nbits_buffer[i]);	
 			}
 			
-			// fwrite(writeable_buffer, 1, writeable_buffer_index, thread_arg->output_file);
-			// fprintf(thread_arg->codification_file, "%s", writeable_metadata_buffer);
-			// memset(writeable_buffer, 0, CHUNK);
+			fwrite(writeable_buffer, 1, writeable_buffer_index, thread_arg->output_file);
+			fprintf(thread_arg->codification_file, "%s", writeable_metadata_buffer);
+			memset(writeable_buffer, 0, CHUNK);
 
 			read_from_file_thread_and_apply_codification(
 				thread_arg->input_file, thread_arg->input_buffer, thread_arg->nread, 
