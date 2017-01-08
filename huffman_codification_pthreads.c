@@ -75,6 +75,8 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
+
 
 #include "priority_queue.h"
 #include "frequency.h"
@@ -88,6 +90,7 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 
 #define NUM_THREADS 	2
 #define MASTER_THREAD   0
+
 
 typedef struct huffman_thread_struct {
 	int thread_id;
@@ -176,6 +179,8 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	char path[MAX_BITS_CODE];
 	find_codification(root_holder, path, 0, codification);
 
+	clock_t start = clock();
+	
 	// create threads
 	for (i = 0; i < NUM_THREADS; i ++) {
 		// create argument structure
@@ -199,6 +204,10 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	for (i = 0; i < NUM_THREADS; i ++) {
 		pthread_join(threads[i], NULL);
 	}
+	/*Do something*/
+	clock_t end = clock();
+	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
+	printf("%f\n", seconds);
 
 	for (i = 0; i < NUM_THREADS; i ++) {
 		fwrite(output_file_buffer + i * thread_size, 1, output_buffer_contors[i], output_file);
