@@ -271,6 +271,9 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	unsigned long long int size = ftell(input_file);
 	fseek(input_file, 0, SEEK_SET);
 
+	char input_buffer[size];
+	fread(input_buffer, size, 1, input_file);
+	
 	printf("%llu\n", size);
 
 
