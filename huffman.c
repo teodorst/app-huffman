@@ -156,14 +156,13 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int chunk_siz
     char output_char = 0;
     
     for (i = index; i < (index + chunk_size); i ++) {
-        char *codif = codification[(unsigned char)chunk[i]];
+        char *codif = codification[(unsigned int)chunk[i]];
         for (j = 0; j < strlen(codif); j ++) {
             output_char |= (codif[j] - 48) << contor;
             contor --;
             *bits += 1;
 
             if (contor == -1) {
-                fprintf(stderr, "%d\n", *output_buffer_contor);
                 output_buffer[*output_buffer_contor] = output_char;
                 *output_buffer_contor += 1;
                 output_char = 0;
