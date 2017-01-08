@@ -8,7 +8,7 @@ serial: huffman_serial.o priority_queue.o frequency.o huffman.o
 
 
 pthreads: huffman_codification_pthreads.o frequency.o huffman.o priority_queue.o
-	$(CC) $(CFLAGS) -o huffman_codification_pthreads $^
+	$(CC) $(CFLAGS) -pthread -o huffman_codification_pthreads $^
 
 
 huffman_codification_pthreads.o: huffman_codification_pthreads.c frequency.o huffman.o priority_queue.o
