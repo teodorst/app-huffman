@@ -160,7 +160,7 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_lim
     int codif_size = 0;
 
     for (i = index; i < upper_limit; i ++) {
-        *codif = codification[(unsigned char)chunk[i]];
+        codif = codification[(unsigned char)chunk[i]];
         codif_size = strlen(codif);
         for (j = 0; j < codif_size; j ++) {
             output_char |= (codif[j] - 48) << contor;
