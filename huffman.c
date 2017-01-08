@@ -31,6 +31,7 @@ int decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nb
     int bit;
     int length = 0;
 
+    //#pragma omp parallel for private(i, j) shared(nbits, nbytes, buffer, node, root, out_buffer, count_bits, out_buffer_size, bit, length) schedule(static, 500)
     for (i = 0; i < nbytes; i++) {
         for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
             
@@ -145,6 +146,7 @@ void write_codification(FILE* codification_fp, char **codification, unsigned lon
 
     fprintf(codification_fp, "%llu\n", nbits);
 
+    #pragma omp parallel for private(i) shared(codification, output_string, codification_fp) schedule(static, 500)
     for (i = 0; i < MAX_BITS_CODE; i ++) {
         if (codification[i] != NULL) {
             sprintf(output_string, "%c : %s\n", i, codification[i]);
@@ -237,8 +239,6 @@ node_t* build_huffman_tree_from_codification(char **codification) {
     node_t* root = init_node('#');
     node_t* node = root;
     
-    //omp_set_dynamic(0);
-    //mp_set_num_threads(4);
     #pragma omp parallel for private(i, current_code_index, node, codification_length) shared(codification, root) schedule(static, 500)
     for (i = 0; i < 128; i ++) {
         if (codification[i]) {
