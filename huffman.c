@@ -149,6 +149,8 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_limit, char **codification, 
     char *output_buffer, int *output_buffer_contor, unsigned long long int *bits) {
     
+    printf("IN codification %d %d\n", index, upper_limit);
+
     *output_buffer_contor = 0;
     *bits = 0;
     int contor = 7;
