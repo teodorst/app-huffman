@@ -272,11 +272,12 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	fseek(input_file, 0, SEEK_SET);
 
 	char input_buffer[size];
+	memset(input_buffer, 0, size);
 	fread(input_buffer, size, 1, input_file);
 	
 	printf("%llu\n", size);
 
-
+	printf("%c %c %c %c\n", input_buffer[312], input_buffer[1012], input_buffer[612], input_buffer[412], );
 	// // barriers
 	// pthread_barrier_t frequency_barrier;
 	// if(pthread_barrier_init(&frequency_barrier, NULL, NUM_THREADS))
