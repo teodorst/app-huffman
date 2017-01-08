@@ -209,9 +209,9 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
 	printf("%f\n", seconds);
 
-	// for (i = 0; i < NUM_THREADS; i ++) {
-	// 	fwrite(output_file_buffer + i * thread_size, 1, output_buffer_contors[i], output_file);
-	// }
+	for (i = 0; i < NUM_THREADS; i ++) {
+		fwrite(output_file_buffer + i * thread_size, 1, output_buffer_contors[i], output_file);
+	}
 
 	// close files
 	fclose(input_file);
