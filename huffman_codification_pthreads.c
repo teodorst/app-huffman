@@ -113,7 +113,7 @@ FILE* open_file(char *filename, char *mode) {
 }
 
 void *codification_thread(void *huffman_info_thread) {
-	huffman_thread_struct* thread_arg = (huffman_thread_struct* ) huffman_info_thread;
+	huffman_thread_struct* thread_arg = (huffman_thread_struct*) huffman_info_thread;
 	
 	unsigned long long int thread_size = thread_arg->input_buffer_size / NUM_THREADS;
 	int index = (thread_arg->thread_id) * thread_size;
@@ -129,7 +129,6 @@ void *codification_thread(void *huffman_info_thread) {
 	char *output_buffer = thread_arg->output_buffer;
 
 	printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, upper_limit);
-	int i, j;
 	
 	write_codification_for_chunk_pthreads(input_buffer, index, upper_limit, codification, output_buffer, output_buffer_contor, nbits);
 
@@ -164,7 +163,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 
 	// read input file //
-	size_t nread = fread(input_file_buffer, 1, size, input_file);
+	fread(input_file_buffer, 1, size, input_file);
 
 	unsigned long long int *frequency = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
 
@@ -178,8 +177,8 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	char path[MAX_BITS_CODE];
 	find_codification(root_holder, path, 0, codification);
 
-	clock_t start = clock();
-	
+	time_t start = time(NULL);
+
 	// create thrxeads
 	for (i = 0; i < NUM_THREADS; i ++) {
 		// create argument structure
@@ -197,20 +196,22 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 			printf("Error; return code from pthread_create() is %d\n", ret);
 			exit(-1);
 		}
-
 	}
 
 	for (i = 0; i < NUM_THREADS; i ++) {
 		pthread_join(threads[i], NULL);
 	}
-	/*Do something*/
-	clock_t end = clock();
-	float seconds = (float)(end - start) / CLOCKS_PER_SEC;
-	printf("%f\n", seconds);
+
+	printf("%.2f\n", (double)(time(NULL) - start));
+
 
 	for (i = 0; i < NUM_THREADS; i ++) {
 		fwrite(output_file_buffer + i * thread_size, 1, output_buffer_contors[i], output_file);
+		printf("%d\n", output_buffer_contors[i]);
+
 	}
+
+	write_metadata_file_pthreads(codification_file, codification, size, NUM_THREADS, nbits_buffer, output_buffer_contors);
 
 	// close files
 	fclose(input_file);

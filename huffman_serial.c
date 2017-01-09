@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "priority_queue.h"
 #include "frequency.h"
@@ -48,7 +49,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     unsigned long long int size = ftell(input_fp);
     fseek(input_fp, 0, SEEK_SET);
 
-    int i, ret;
+    int i;
     char input_file_buffer[size];
     char output_file_buffer[size];
 
@@ -72,29 +73,22 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     int contor = 7;
     unsigned long long int bits = 0;
 
+    time_t start = time(NULL);
+
     write_codification_for_chunk(input_file_buffer, size, codification, output_file_buffer, &output_buffer_contor, &output_char, &contor, &bits);
+    
+    printf("%.2f\n", (double)(time(NULL) - start));
 
     fwrite(output_file_buffer, 1, output_buffer_contor, output_fp);
+    if (output_char != 0) {
+        fwrite(&output_char, 1, 1, output_fp);
+    }
 
-//
+    write_metadata_file_serial(codification_fp, codification, bits);
 
-    // unsigned long long int* frequecy = compute_frequency(input_fp);
-
-    //  build the huffman tree 
-    // node_t *root = build_huffman_tree(frequecy);
-
-	/* print the encoded letters */ 
-    // print_codes(root, path, 0);
-    
-    // find_codification(root, path, 0, codification);
-
-	// nbits = write_codification_for_input_file(codification, input_fp, output_fp);
 	fclose(input_fp);
 	fclose(output_fp);
     fclose(codification_fp);
-
-    /* write codification to file */
-    // write_metadata_file_serial(codification_fp, codification, nbits);
 
     free_codification_matrix(codification);
     return 0;

@@ -53,6 +53,44 @@ int decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nb
     return length;
 }
 
+
+int decode_bytes_for_chunk_pthreads(node_t *root, char *buffer, unsigned long long int nbits, char* out_buffer) {
+    
+    int i, j;
+    node_t *node = root;
+    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1;
+    unsigned long long int count_bits = 0L;
+    int bit;
+    int length = 0;
+    for (i = 0; i < nbytes; i++) {
+        for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
+            
+            /* get bit */
+            bit = (buffer[i] >> j) & 1;
+            
+            if (bit == 0) {
+                /* go left in tree*/
+                node = node->left;
+
+            } else {
+                /* go right in tree */
+                node = node->right;
+            }
+
+            /* depth search from the root */
+            if (node->left == NULL && node->right == NULL) {
+                out_buffer[length ++] = node->data;
+                node = root;
+            }
+
+            count_bits ++;
+        }
+    }
+
+    return length;
+}
+
+
 void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long int nbits) {
     size_t nread = 0;
     unsigned long long int total_bytes = 0L;
@@ -85,15 +123,10 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
 
     free(aux_buf);
     free(result);
-
+    printf("FInish\n");
     if (total_bytes < nbytes)
         printf("less number of bytes %llu\n", total_bytes);
 }
-
-/* 
-
-*/
-
 
 unsigned long long int write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
     size_t nread = 0;
@@ -113,8 +146,6 @@ unsigned long long int write_codification_for_input_file(char **codification, FI
         output_buffer_contor = 0;
     }
 
-
-
     // if there are some bits to write in the last byte.
     if (contor > 7 && contor > -1 ) {
         fwrite(&output_char, 1, 1, output_fp);
@@ -122,8 +153,6 @@ unsigned long long int write_codification_for_input_file(char **codification, FI
 
     return bits;
 }
-
-
 
 void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, char* output_buffer, 
     int *output_buffer_contor, char* output_char, int* contor, unsigned long long int* bits) {
@@ -145,14 +174,12 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
     }
 }
 
-
 void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_limit, char **codification, 
     char *output_buffer, int *output_buffer_contor, unsigned long long int *bits) {
-    
-    printf("IN codification %d %d\n", index, upper_limit);
 
     *output_buffer_contor = index;
     *bits = 0;
+    int output_buffer_contor_static = index;
     int contor = 7;
     int i, j;
     char output_char = 0;
@@ -168,8 +195,7 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_lim
             *bits += 1;
 
             if (contor == -1) {
-                output_buffer[*output_buffer_contor] = output_char;
-                *output_buffer_contor += 1;
+                output_buffer[output_buffer_contor_static++] = output_char;
                 output_char = 0;
                 contor = 7;
             }
@@ -177,18 +203,13 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_lim
     }
 
     if (contor > -1 && contor < 7) {
-        output_buffer[*output_buffer_contor] = output_char;
-        *output_buffer_contor += 1;
+        output_buffer[output_buffer_contor_static] = output_char;
+        output_buffer_contor_static += 1;
     }
 
-    *output_buffer_contor -= index;
+    *output_buffer_contor = output_buffer_contor_static - index;
 
 }
-
-
-/*
-
-*/
 
 
 void write_metadata_file_serial(FILE* codification_fp, char **codification, unsigned long long int nbits) {
@@ -200,13 +221,19 @@ void write_metadata_file_serial(FILE* codification_fp, char **codification, unsi
     fprintf(codification_fp, "%llu\n", nbits);
 }
 
-void write_metadata_file_pthreads(FILE* codification_fp, char **codification, unsigned int chunks_no) {
+
+void write_metadata_file_pthreads(FILE* codification_fp, char **codification, size_t size, int num_threads, unsigned long long int* nbits_buffer, int *output_buffer_contors) {
     // write codification
     write_codification(codification_fp, codification);
 
     // write number of bits
-    fprintf(codification_fp, "%u\n", chunks_no);
+    fprintf(codification_fp, "%d\n%lu\n", num_threads, size);
+    int i;
+    for (i = 0; i < num_threads; i ++) {
+        fprintf(codification_fp, "%llu %d\n", nbits_buffer[i], output_buffer_contors[i]);
+    }
 }
+
 
 void write_codification(FILE* codification_fp, char **codification) {
     int i, codification_length = 0;
@@ -272,6 +299,47 @@ char** read_configuration(FILE *codification_fp, unsigned long long int *nbits) 
     return codification;
 }
 
+char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int *nbits_buffer, int* input_buffer_contors, size_t *size) {
+    char **codification = (char**) calloc(128, sizeof(char*));
+    char *line = NULL;
+    ssize_t nread;
+    char index;
+    int i;
+    size_t line_length;
+    int codification_length;
+        
+    // read number of lines from codification
+    fscanf(codification_fp, "%d", &codification_length);
+    fgetc(codification_fp);
+
+    // read codification
+    for(i = 0; i < codification_length; i ++ ) {
+        nread = getline(&line, &line_length, codification_fp);
+        if (nread == 1) {
+            index = line[0];
+            nread = getline(&line, &line_length, codification_fp);
+            if (nread != -1) {
+                line[nread-1] = '\0';
+                codification[(unsigned char)index] = strdup(line+3);    
+            }
+        } else {
+            line[nread-1] = '\0';
+            sscanf(line, "%c", &index);
+            codification[(unsigned char)index] = strdup(line+4);    
+        }
+    } 
+    
+    int threads_no = 0;
+    // read number of threads and bits
+    fscanf(codification_fp, "%d\n%lu\n", &threads_no, size);
+
+    for (i = 0; i < threads_no; i ++) {
+        fscanf(codification_fp, "%llu %d", nbits_buffer + i, input_buffer_contors + i);
+    }
+
+    free(line);
+    return codification;
+}
 
 /* depth traversal of tree and build the code */
 void find_codification(node_t *node, char *path, int level, char **codification) {
