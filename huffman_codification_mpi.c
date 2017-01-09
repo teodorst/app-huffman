@@ -56,12 +56,15 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     char codification_v[CODIFICATION_V_SIZE];
     char** codification = (char**) calloc(128, sizeof(char*));
 
+    FILE* input_file;
+    FILE* output_file;
+    FILE* codification_file;
 
    	if (myrank == MASTER_PROCESS) {
 		// open files
-        FILE* input_file = open_file(input_filename, "r");
-        FILE* output_file = open_file(output_filename, "w");
-        FILE* codification_file = open_file(codification_filename, "w");
+        input_file = open_file(input_filename, "r");
+        output_file = open_file(output_filename, "w");
+        codification_file = open_file(codification_filename, "w");
 
 	    // compute input file size
 		fseek(input_file, 0, SEEK_END);
@@ -118,20 +121,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
                     codification_v[row * 20 + i] = '\0';
             }
         }
-
-        // for (i = 0; i < 128 * 20; i ++) {
-        //     if (i % 20 == 0) {
-        //         printf("\n");
-        //     }
-        //     printf("%c", codification_v[i]);
-        // }
-        // printf("second \n");
-        // for (i = 0; i < 128; i ++) {
-        //     printf("%s\n", codification_v + i * 20);
-        // }
-   	} else {
-
-    }
+   	} 
 
     MPI_Bcast(codification_v, CODIFICATION_V_SIZE, MPI_CHAR, 0, MPI_COMM_WORLD);
 
@@ -141,6 +131,25 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
             MPI_Send(input_buffer + (i - 1) * process_size, process_size, MPI_CHAR, i, 0, MPI_COMM_WORLD);
             printf("%d a trimis la %d input buffer\n", myrank, i);
         }
+
+        int output_buffer_contors[nr_proc - 1];
+        unsigned long long int nbits_buffer[nr_proc - 1];
+        for (i = 1; i < nr_proc; i ++) {
+            MPI_Recv(output_buffer_contors + i - 1, 1, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(nbits_buffer + i - 1, 1, MPI_UNSIGNED_LONG, i, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(input_buffer + (i - 1) * process_size, process_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, &status);
+        }
+
+        for (i = 0; i < nr_proc-1; i++) {
+            fwrite(input_buffer + i * process_size, 1, output_buffer_contors[i], output_file);
+        }
+
+        write_metadata_file_pthreads(codification_file, codification, size, nr_proc-1, nbits_buffer, output_buffer_contors);
+
+        // close files
+        fclose(input_file);
+        fclose(output_file);
+        fclose(codification_file);
     }
 
     if (myrank != MASTER_PROCESS) {
@@ -151,12 +160,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
             }
         }
 
-        // for (i = 0; i < 128; i++) {
-        //     if (codification[i]) {
-        //        printf("%c %s\n", i, codification[i]);
-        //     }
-        // }
-
+    
         MPI_Recv(&process_size, 1, MPI_INT, MASTER_PROCESS, 0, MPI_COMM_WORLD, &status);
         printf("%d \n", process_size);
         input_buffer = (char *) malloc(process_size * sizeof(char));
@@ -172,94 +176,12 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 
         printf("%d a codificat in %d chars %llu bits\n", myrank, output_buffer_contor, nbits);
 
+        MPI_Send(&output_buffer_contor, 1, MPI_INT, MASTER_PROCESS, 0, MPI_COMM_WORLD);
+        MPI_Send(&nbits, 1, MPI_UNSIGNED_LONG, MASTER_PROCESS, 0, MPI_COMM_WORLD);
+        MPI_Send(input_buffer, output_buffer_contor, MPI_CHAR, MASTER_PROCESS, 0, MPI_COMM_WORLD);
+
     }
 
-
-
-   	// else {
-   	// 	input_buffer = (char *) malloc(process_size * sizeof(char));
-    //     MPI_Recv(codification_v, CODIFICATION_V_SIZE, MPI_CHAR, MASTER_PROCESS, 0, MPI_COMM_WORLD, &status);
-    //     printf("%d A primit codif\n", myrank );
-   	// }
-
-    char path[MAX_BITS_CODE];
-
-
-
-    // // the master task
-    // if (myrank == 0){
-    //     input_fp = open_file(input_filename, "r");
-    //     unsigned long long int* frequecy = compute_frequency(input_fp);
-
-    //     /* build the huffman tree */
-    //     node_t *root = build_huffman_tree(frequecy);
-
-    //     /* print the encoded letters */ 
-    //     // print_codes(root, path, 0);
-
-    //     find_codification(root, path, 0, codification);
-        
-    //     // transform the codification matrix into a vector 
-    //     int row, i;
-    //     for (row = 0; row < 128; row++)
-    //     {
-    //         if (codification[row]){
-    //         for (i = 0; i < strlen(codification[row]) ; i++)
-    //             codification_v[row * 128 + i] = codification[row][i];
-            
-    //         for (i = strlen(codification[row]); i < 128; i++)
-    //             codification_v[row * 128 + i] = '2';
-    //         }
-    //         else
-    //         {
-    //             for (i = 0; i < 128; i++)
-    //             codification_v[row * 128 + i] = '2';
-    //         }
-    //     }
-
-    // }
-
-    // // broadcast the codification matrix to all procs
-    // MPI_Bcast(codification_v, 128 * 128, MPI_CHAR, 0, MPI_COMM_WORLD);
-
-    // // transform the codification vector back into a matrix
-    // if (myrank != 0) {
-    //     int i, j;
-
-    //     for (i = 0 ; i < 128 ; i++)
-    //     {
-    //         if (codification_v[i * 128] == '2')
-    //             continue;
-            
-    //         codification[i] =(char *) malloc (128 * sizeof(char));
-    //         for (j = 0; j < 128 ; j++)
-    //             if (codification_v[i*128+j] != '2')
-    //                 codification[i][j] = codification_v[i*128+j];
-    //             else
-    //                 codification[i][j] = '\0';
-    //     }
-    // }
-
-    // // open files for write
-    // if (myrank == 0){
-    //     codification_fp = open_file(codification_filename, "w");
-    //     codification_fp2 = open_file("metadata", "w");
-    //     output_fp = open_file(output_filename, "w");
-    // }
-
-    // //encode the content 
-    // write_codification_for_input_file(codification, input_fp, output_fp, codification_fp, codification_fp2, myrank, nr_proc);
-
-    // if (myrank == 0) {
-    //      /* write codification to file */
-    //     write_codification(codification_fp, codification);
-
-    //     fclose(input_fp);
-    //     fclose(output_fp);
-    //     fclose(codification_fp);
-    // }
-
-    // free_codification_matrix(codification);
     MPI_Finalize();
 
     return 0;
