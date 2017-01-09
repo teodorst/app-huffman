@@ -62,7 +62,6 @@ int decode_bytes_for_chunk_pthreads(node_t *root, char *buffer, unsigned long lo
     unsigned long long int count_bits = 0L;
     int bit;
     int length = 0;
-
     for (i = 0; i < nbytes; i++) {
         for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
             
@@ -72,6 +71,7 @@ int decode_bytes_for_chunk_pthreads(node_t *root, char *buffer, unsigned long lo
             if (bit == 0) {
                 /* go left in tree*/
                 node = node->left;
+
             } else {
                 /* go right in tree */
                 node = node->right;
@@ -123,7 +123,7 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
 
     free(aux_buf);
     free(result);
-
+    printf("FInish\n");
     if (total_bytes < nbytes)
         printf("less number of bytes %llu\n", total_bytes);
 }
@@ -222,15 +222,15 @@ void write_metadata_file_serial(FILE* codification_fp, char **codification, unsi
 }
 
 
-void write_metadata_file_pthreads(FILE* codification_fp, char **codification, size_t size, int num_threads, unsigned long long int* nbits_buffer) {
+void write_metadata_file_pthreads(FILE* codification_fp, char **codification, size_t size, int num_threads, unsigned long long int* nbits_buffer, int *output_buffer_contors) {
     // write codification
     write_codification(codification_fp, codification);
 
     // write number of bits
-    fprintf(codification_fp, "%d\n%u\n", num_threads, size);
+    fprintf(codification_fp, "%d\n%lu\n", num_threads, size);
     int i;
     for (i = 0; i < num_threads; i ++) {
-        fprintf(codification_fp, "%llu\n", nbits_buffer[i]);
+        fprintf(codification_fp, "%llu %d\n", nbits_buffer[i], output_buffer_contors[i]);
     }
 }
 
@@ -299,7 +299,7 @@ char** read_configuration(FILE *codification_fp, unsigned long long int *nbits) 
     return codification;
 }
 
-char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int *nbits_buffer, size_t *size) {
+char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int *nbits_buffer, int* input_buffer_contors, size_t *size) {
     char **codification = (char**) calloc(128, sizeof(char*));
     char *line = NULL;
     ssize_t nread;
@@ -308,11 +308,9 @@ char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int
     size_t line_length;
     int codification_length;
         
-    fprintf(stderr, "da no ?1\n");
     // read number of lines from codification
     fscanf(codification_fp, "%d", &codification_length);
     fgetc(codification_fp);
-    fprintf(stderr, "da no ?1\n");
 
     // read codification
     for(i = 0; i < codification_length; i ++ ) {
@@ -334,10 +332,10 @@ char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int
     
     int threads_no = 0;
     // read number of threads and bits
-    fscanf(codification_fp, "%d\n%u\n", &threads_no, size);
+    fscanf(codification_fp, "%d\n%lu\n", &threads_no, size);
 
     for (i = 0; i < threads_no; i ++) {
-        fscanf(codification_fp, "%llu", nbits_buffer + i);
+        fscanf(codification_fp, "%llu %d", nbits_buffer + i, input_buffer_contors + i);
     }
 
     free(line);

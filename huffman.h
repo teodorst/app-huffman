@@ -38,7 +38,7 @@ void write_codification_for_chunk_pthreads(char *chunk, int index, int upper_lim
 void write_metadata_file_serial(FILE* codification_fp, char **codification, unsigned long long int nbits);
 
 
-void write_metadata_file_pthreads(FILE* codification_fp, char **codification, size_t size, int num_threads, unsigned long long int* nbits_buffer);
+void write_metadata_file_pthreads(FILE* codification_fp, char **codification, size_t size, int num_threads, unsigned long long int* nbits_buffer, int *output_buffer_contors);
 
 
 void write_codification(FILE* codification_fp, char **codification);
@@ -47,7 +47,7 @@ void write_codification(FILE* codification_fp, char **codification);
 char** read_configuration(FILE *codification_fp, unsigned long long int *nbits);
 
 
-char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int *nbits_buffer, size_t *size);
+char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int *nbits_buffer, int* input_buffer_contors, size_t *size);
 
 
 void find_codification(node_t *root, char *path, int level, char** codification);

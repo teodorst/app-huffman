@@ -100,7 +100,6 @@ typedef struct huffman_thread_struct {
     unsigned long long int *nbits_buffer;
     int* output_buffer_contors;
     node_t* root;
-    char **codification;
 } huffman_thread_struct;
 
 
@@ -125,7 +124,6 @@ void *decodification_thread(void *huffman_info_thread) {
     int index_output = id * thread_size_output;
     unsigned long long int nbits = thread_arg->nbits_buffer[id];
     
-    char **codification = thread_arg->codification;
     char *input_buffer = thread_arg->input_buffer;
     char *output_buffer = thread_arg->output_buffer;
 
@@ -144,30 +142,35 @@ void huffman_decodification_pthreads(char *input_file_name, char* output_file_na
     FILE* output_file = open_file(output_file_name, "w");
     FILE* codification_file = open_file(codification_file_name, "r");
 
-    unsigned long long int* nbits_buffer = (unsigned long long int*) malloc(NUM_THREADS * sizeof(unsigned long long int));
-    size_t file_size = 0;
+    unsigned long long int nbits_buffer[NUM_THREADS];
+    int input_buffer_contors[NUM_THREADS];
 
-    char** codification = read_configuration_pthreads(codification_file, nbits_buffer, &file_size);
+    size_t file_size = 0;
+    int i, index, ret;
+    size_t compressed_file_size = 0;
+
+    char** codification = read_configuration_pthreads(codification_file, nbits_buffer, input_buffer_contors, &file_size);
     
+    for (i = 0; i < NUM_THREADS; i ++) {
+        compressed_file_size += input_buffer_contors[i];
+    }
+
+
+    for (i = NUM_THREADS - 1; i > 0; i --) {
+        input_buffer_contors[i] = input_buffer_contors[i-1];
+    }
+    input_buffer_contors[0] = 0;
+
+    for (i = 1; i < NUM_THREADS; i ++) {
+        input_buffer_contors[i] += input_buffer_contors[i-1];
+    }
+
     /* for each codification find the leaf and save it into a buffer */
     node_t* root = build_huffman_tree_from_codification(codification);
     printf("Got the tree\n");
 
     char input_buffer[file_size];
     char output_buffer[file_size];
-
-    int input_indexes[NUM_THREADS]; 
-
-    size_t compressed_file_size = 0;
-    int i, index, ret;
-
-    input_indexes[0] = 0;
-    for (i = 0; i < NUM_THREADS; i ++) {
-        compressed_file_size += nbits_buffer[i] % 8 == 0 ? (nbits_buffer[i] / 8) : (nbits_buffer[i] / 8 + 1);  
-        if (i != 0) {
-            input_indexes[i] = compressed_file_size % 8 == 0 ? compressed_file_size / 8 : (compressed_file_size / 8 + 1);
-        }
-    }
 
     size_t x = fread(input_buffer, 1, compressed_file_size, input_file);
     printf("%u\n", compressed_file_size);
@@ -181,19 +184,19 @@ void huffman_decodification_pthreads(char *input_file_name, char* output_file_na
 
     time_t start = time(NULL);
 
-
+    printf("Incepe durerea\n");
     // create threads
     for (i = 0; i < NUM_THREADS; i ++) {
         // create argument structure
         arg_struct = (huffman_thread_struct*) malloc(sizeof(huffman_thread_struct));
         arg_struct->thread_id = i;
         arg_struct->input_buffer = input_buffer;
-        arg_struct->input_indexes = input_indexes;
+        arg_struct->input_indexes = input_buffer_contors;
         arg_struct->output_buffer = output_buffer;
         arg_struct->output_buffer_size = file_size;
         arg_struct->nbits_buffer = nbits_buffer;
-        arg_struct->codification = codification;
-
+        arg_struct->root = root;
+        
         ret = pthread_create(&threads[i], NULL, decodification_thread, (void *) arg_struct);
         if (ret) {
             printf("Error; return code from pthread_create() is %d\n", ret);

@@ -156,10 +156,12 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 	char input_file_buffer[size];
 	char output_file_buffer[size];
 
+	
 	int *output_buffer_contors = (int *) malloc(NUM_THREADS * sizeof(int));
 	unsigned long long int *nbits_buffer = (unsigned long long int *) malloc(NUM_THREADS * sizeof(unsigned long long int));
 	
 	char** codification = (char**) calloc(128, sizeof(char*));
+
 
 	// read input file //
 	size_t nread = fread(input_file_buffer, 1, size, input_file);
@@ -178,7 +180,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 	time_t start = time(NULL);
 
-	// create threads
+	// create thrxeads
 	for (i = 0; i < NUM_THREADS; i ++) {
 		// create argument structure
 		arg_struct = (huffman_thread_struct*) malloc(sizeof(huffman_thread_struct));
@@ -206,9 +208,11 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 	for (i = 0; i < NUM_THREADS; i ++) {
 		fwrite(output_file_buffer + i * thread_size, 1, output_buffer_contors[i], output_file);
+		printf("%d\n", output_buffer_contors[i]);
+
 	}
 
-	write_metadata_file_pthreads(codification_file, codification, size, NUM_THREADS, nbits_buffer);
+	write_metadata_file_pthreads(codification_file, codification, size, NUM_THREADS, nbits_buffer, output_buffer_contors);
 
 	// close files
 	fclose(input_file);
