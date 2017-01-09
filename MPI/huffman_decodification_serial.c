@@ -32,9 +32,20 @@ void free_codification_matrix(char** codification) {
 
 int huffman_decompress(char* input_filename, char* output_filename, char *codification_filename) {
     printf("decompress\n");
+    long int nr_chunks;
 
     FILE* codification_fp = open_file(codification_filename, "r");
+     FILE* codification_fp2 = open_file("metadata", "r");
+    // read the bits for each chunk
+    fscanf(codification_fp2, "%ld\n", &nr_chunks);
 
+    // read the bits for each chunk
+    unsigned long long int *bits_per_chunk = (unsigned long long int *) malloc (nr_chunks * sizeof(unsigned long long int)); 
+    int i;
+    for (i = 0 ; i < nr_chunks ; i++)
+        fscanf(codification_fp2, "%llu\n", &bits_per_chunk[i]);
+
+    // read the codification
     char** codification = read_configuration(codification_fp);
 
     /* for each codification find the leaf and save it into a buffer */
@@ -50,8 +61,12 @@ int huffman_decompress(char* input_filename, char* output_filename, char *codifi
     printf("Opened files\n");
 
     /* decode the bytes using huffman tree */
-    decode_bytes(input_fp, out_fp, root);
+    decode_bytes(input_fp, out_fp, codification_fp, root, bits_per_chunk);
 
+    fclose(input_fp);
+    fclose(out_fp);
+    fclose(codification_fp);
+    fclose(codification_fp2);
 
     free_codification_matrix(codification);
     return 0;

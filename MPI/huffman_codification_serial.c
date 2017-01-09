@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mpi.h>
 
 #include "priority_queue.h"
 #include "frequency.h"
@@ -9,6 +10,12 @@
 #define INPUT_FILE 1
 #define OUTPUT_FILE 2
 #define CODIFICATION 3
+
+#define TAG 10
+
+int myrank, size;
+int nr_proc;
+MPI_Status status;
 
 FILE* open_file(char *filename, char *mode) {
 	FILE* fp;
@@ -30,57 +37,88 @@ void free_codification_matrix(char** codification) {
 }
 
 int huffman_compress(char* input_filename, char* output_filename, char* codification_filename) {
-    printf("compress\n");
-    
-    char** codification = (char**) calloc(128, sizeof(char*));
+   printf("[%d] compress\n", myrank);
+    FILE* input_fp;
+    FILE* output_fp;
+    FILE* codification_fp2;
+    FILE* codification_fp;
 
+    char** codification = (char**) calloc(128, sizeof(char*));
+    char *codification_v = (char *) malloc (128 * 128 * sizeof(char*));
     char path[MAX_BITS_CODE];
 
-//procesul cu rank-ul 0 stabileste fracventele, contruieste arborele huffman si creaza tabela de mapare
-if (myrank == 0){
-    FILE* input_fp = open_file(input_filename, "r");
-    unsigned long long int* frequecy = compute_frequency(input_fp);
+    // the master task
+    if (myrank == 0){
+        input_fp = open_file(input_filename, "r");
+        unsigned long long int* frequecy = compute_frequency(input_fp);
 
-    /* build the huffman tree */
-    node_t *root = build_huffman_tree(frequecy);
+        /* build the huffman tree */
+        node_t *root = build_huffman_tree(frequecy);
 
-    /* print the encoded letters */ 
-    // print_codes(root, path, 0);
+        /* print the encoded letters */ 
+        // print_codes(root, path, 0);
 
-    
-    find_codification(root, path, 0, codification);
-}
-// trimiterea broadcast de la procesul cu rank 0 la celelalte procese numarul de coloane - MPI_Bcast
-MPI_Bcast(&size_codification, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        find_codification(root, path, 0, codification);
+        
+        // transform the codification matrix into a vector 
+        int row, i;
+        for (row = 0; row < 128; row++)
+        {
+            if (codification[row]){
+            for (i = 0; i < strlen(codification[row]) ; i++)
+                codification_v[row * 128 + i] = codification[row][i];
+            
+            for (i = strlen(codification[row]); i < 128; i++)
+                codification_v[row * 128 + i] = '2';
+            }
+            else
+            {
+                for (i = 0; i < 128; i++)
+                codification_v[row * 128 + i] = '2';
+            }
+        }
 
-if (myrank != 0){
-//se aloca mem pentru matricea codification
+    }
 
-}
+    // broadcast the codification matrix to all procs
+    MPI_Bcast(codification_v, 128 * 128, MPI_CHAR, 0, MPI_COMM_WORLD);
 
-// trimitere broadcast de la procesul cu rank 0 la celelalte procese - MPI_Bcast 
-MPI_Bcast(&(codification[0][0]), 128 * size_codification, MPI_CHAR, 0, MPI_COMM_WORLD);
+    // transform the codification vector back into a matrix
+    if (myrank != 0) {
+        int i, j;
 
-// procesul cu rank-ul 0 este singurul care va scrie in fisier
-if (myrank == 0){
-    FILE* codification_fp = open_file(codification_filename, "w");
-    FILE* output_fp = open_file(output_filename, "w");
+        for (i = 0 ; i < 128 ; i++)
+        {
+            if (codification_v[i * 128] == '2')
+                continue;
+            
+            codification[i] =(char *) malloc (128 * sizeof(char));
+            for (j = 0; j < 128 ; j++)
+                if (codification_v[i*128+j] != '2')
+                    codification[i][j] = codification_v[i*128+j];
+                else
+                    codification[i][j] = '\0';
+        }
+    }
 
-    write_codification_for_input_file(codification, input_fp, output_fp);
+    // open files for write
+    if (myrank == 0){
+        codification_fp = open_file(codification_filename, "w");
+        codification_fp2 = open_file("metadata", "w");
+        output_fp = open_file(output_filename, "w");
+    }
 
-    fclose(input_fp);
-    fclose(output_fp);
-}
+    //encode the content 
+    write_codification_for_input_file(codification, input_fp, output_fp, codification_fp, codification_fp2, myrank, nr_proc);
 
-// procesul cu rank-ul zero va trimite fiecarui alt proces un chunk din fisier pentru care se va face encodarea
-// celelalte procese fac prelucrarile necesare si un MPI_Send cu informatiile obtinute catre 0; 
-// procesul master va scrie in fisier rezultatele fiecarui proces
-    /* write codification to file */
-    write_codification(codification_fp, codification);
+    if (myrank == 0) {
+         /* write codification to file */
+        write_codification(codification_fp, codification);
 
-if (myrank == 0){
-    fclose(codification_fp);
-}
+        fclose(input_fp);
+        fclose(output_fp);
+        fclose(codification_fp);
+    }
 
     free_codification_matrix(codification);
     return 0;
@@ -88,13 +126,10 @@ if (myrank == 0){
 
 
 int main (int argc, char* argv[]) {
-	int myrank, size;
-	int tag = 25;
-	MPI_Status status;
 
 	MPI_Init (&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Comm_size(MPI_COMM_WORLD, &nr_proc);
 
     if (argc == 4) {
         huffman_compress(argv[INPUT_FILE], argv[OUTPUT_FILE], argv[CODIFICATION]);

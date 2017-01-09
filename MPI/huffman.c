@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mpi.h>
 
 #include "huffman.h" 
 #include "frequency.h"
@@ -16,154 +17,221 @@ node_t* init_node(char data) {
 }
 
 
-void decode_bytes_for_chunk(node_t *root, FILE *output_fp, char *buffer, int buffer_size, node_t **remainig_node, char* output_buffer, int *output_buffer_size) {
-    
-    int i;    
+int decode_bytes_for_chunk(node_t *root, char *buffer, unsigned long long int nbits, node_t **remainig_node, char* out_buffer) {
+    int i, j;
+    node_t *node = *remainig_node;
+    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1;
+    unsigned long long int count_bits = 0L;
+    int bit;
+    int length = 0;
 
-    for (i = 0; i < buffer_size; i++) {
-        if (buffer[i] == '0') {
-            /* go left in tree*/
-            *remainig_node = (*remainig_node)->left;
-        } else {
-            /* go right in tree */
-            *remainig_node = (*remainig_node)->right;
-        }
-        
-        /* depth search from the root */
-        if ((*remainig_node)->left == NULL && (*remainig_node)->right == NULL) {
-            output_buffer[*output_buffer_size] = (*remainig_node)->data;
-            *output_buffer_size += 1;
-            *remainig_node = root;
-            if (*output_buffer_size == CHUNK) {
-                fwrite(output_buffer, sizeof(char), CHUNK, output_fp);
-                memset(output_buffer, '\0', CHUNK);
-                *output_buffer_size = 0;
+    for (i = 0; i < nbytes; i++) {
+        for (j = 7 ; j >= 0 && count_bits < nbits ; j--) {
+          
+            /* get bit */
+            bit = (buffer[i] >> j) & 1;
+    
+            if (bit == 0) {
+                /* go left in tree*/
+                node = node->left;
+            } else {
+                /* go right in tree */
+                node = node->right;
             }
-        }   
+
+            /* depth search from the root */
+            if (node->left == NULL && node->right == NULL) {
+                out_buffer[length ++] = node->data;
+                node = root;
+            }
+
+            count_bits ++;
+        }
     }
 
+    return length;
 }
 
-void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root) {
+void decode_bytes(FILE *in_fp, FILE *out_fp, FILE *codification_fp, node_t *root, unsigned long long int *bits_per_chunk) {
     size_t nread = 0;
-    char *input_buffer = (char *) calloc (CHUNK, sizeof(char));
-    char *decoded_result = (char *) calloc(CHUNK, sizeof(char));
-    int decoded_result_size = 0;
     node_t *remainig_node = root;
+    int length = 0;
 
-    while((nread = fread(input_buffer, sizeof(char), CHUNK, in_fp)) > 0) {
-        decode_bytes_for_chunk(root, out_fp, input_buffer, nread, &remainig_node, decoded_result, &decoded_result_size);
-        
+    int chunk_index = 0;
+    unsigned long long int chunk_size = 0;
+    if (bits_per_chunk[chunk_index] % 8 == 0)
+        chunk_size = bits_per_chunk[chunk_index] / 8;
+    else
+        chunk_size = bits_per_chunk[chunk_index] / 8 + 1;
+
+    char *aux_buf = (char *) calloc (chunk_size, sizeof(char));
+    char *result = (char *) calloc (10000 * chunk_size, sizeof(char));
+
+
+    while((nread = fread(aux_buf, 1, chunk_size, in_fp)) > 0) {
+        remainig_node = root;
+
+        if (nread == chunk_size){
+            length = decode_bytes_for_chunk(root, aux_buf, bits_per_chunk[chunk_index], &remainig_node, result);
+         }
+
+        fwrite(result, 1, length, out_fp);
+
         /* reset buffers for the next chunk */
-        memset(input_buffer, '\0', CHUNK);
+        memset(aux_buf, '\0', chunk_size);
+        memset(result, '\0', 5 * chunk_size);
         
+        chunk_index ++;
+        if (bits_per_chunk[chunk_index] % 8 == 0)
+            chunk_size = bits_per_chunk[chunk_index] / 8;
+        else
+            chunk_size = bits_per_chunk[chunk_index] / 8 + 1;
     }
 
-    /* write remaining decoded data */
-    if (decoded_result_size > 0) {
-        fwrite(decoded_result, sizeof(char), decoded_result_size, out_fp);
-    }
-    
-    /* free used memory */
-    free(input_buffer);
-    free(decoded_result);
 
+    free(aux_buf);
+    free(result);
 }
 
 
-void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp) {
+void write_codification_for_input_file(char **codification, FILE* input_fp, FILE* output_fp, FILE *codification_fp, FILE *codification_fp2, int myrank, int nr_proc) {
     size_t nread = 0;
     char buf[CHUNK];
+    long int input_file_size;
+    MPI_Status status;
 
-        
-    // daca sunt master distribui 
+    memset(buf, '\0', CHUNK);
+
+    // master task 
     if (myrank == 0){
-    // int rank = 0;
+        int i;
 
-    // calcul dimensiun fisier - fseek
+        // compute the file size
+        fseek(input_fp, 0, SEEK_END);
+        input_file_size = ftell(input_fp);
+        fseek(input_fp, 0, SEEK_SET);
 
-    // creare vector in care sa se retina cate chunk-uri va prelucra un anumit procesor + calcul pt fiecare procesor  
-        int *nr_of_chunks = (int *) malloc (nr_proc * sizeof(int));
+        long int nr_chunks = (input_file_size % CHUNK == 0) ? input_file_size/CHUNK : (input_file_size/CHUNK + 1);
+        fprintf(codification_fp2, "%ld\n", nr_chunks);
 
-    // trimit catre celelalte procesoare cate chunk-uri vor prelucra
-        for (i = 1 ; i < nr_proc ; i ++)
-            MPI_Send(nr_of_chunks[i], ..);
+        // compute number of chunk for each proc  
+        long int *nr_of_chunks = (long int *) malloc (nr_proc * sizeof(long int));
+        long int *nr_of_chunks_aux = (long int *) malloc (nr_proc * sizeof(long int));
 
+        int standard_nr_per_chunk = nr_chunks / (nr_proc - 1);
+        for (i = 1 ; i < nr_proc ; i++) {
+            nr_of_chunks[i] = standard_nr_per_chunk;
+            nr_of_chunks_aux[i] = nr_of_chunks[i];
+        }
+
+        if (nr_chunks % (nr_proc - 1) != 0) { 
+            nr_of_chunks[nr_proc-1] += nr_chunks % (nr_proc - 1);
+            nr_of_chunks_aux[nr_proc-1] = nr_of_chunks[nr_proc-1];
+        }
+
+        // send the number of chunks to each proc
+        for (i = 1 ; i < nr_proc ; i ++){
+            MPI_Send(&nr_of_chunks[i], 1, MPI_LONG_INT, i, MPI_TAG, MPI_COMM_WORLD);
+        }
+
+        i = 1;
         while((nread = fread(buf, sizeof(char), CHUNK, input_fp)) > 0) {
+            
+            //distribute the content of the input file
+            if (nr_of_chunks[i] > 0){
+                // send a chunk to proc i
+                MPI_Send(&nread, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+                
+                MPI_Send(buf, nread, MPI_CHAR, i, 0, MPI_COMM_WORLD);
+                nr_of_chunks[i] --;
 
-            //cat timp mai am chank-uri le trimit unui anumit procesor
-            while(){
-                // trimite fiecare chunk catre un anumit procesor.
-                MPI_Send(buf_size, ..);
-                MPI_Send(buf, ..);
+                if (nr_of_chunks[i] == 0)
+                    i++;
             }
-        
+            
             memset(buf, '\0', CHUNK);
         }
 
-        //primeste datele de la celelalte procesoare
-        for (i = 1; i < nr_proc ; i++) //pt fiecare procesor
-            // cat timp mai am chunk-uri de primit
-            while(nr_of_chunks[i] > 0){
-                MPI_Recv(output_buffer_size, ..);     // marimea outputului 
-                
-                //alocare memorie buffer 
+        unsigned long long int output_buffer_bits;
+        // gather data from all the others procs
+        for (i = 1; i < nr_proc ; i++) {
+        
+            while(nr_of_chunks_aux[i] > 0){
+                MPI_Recv(&output_buffer_bits, 1, MPI_UNSIGNED_LONG_LONG, i, 30, MPI_COMM_WORLD, &status);            
+            
+                unsigned long long int nbytes = output_buffer_bits % 8 == 0 ? output_buffer_bits/8 : output_buffer_bits/8 + 1;
+                char *output_buffer = (char *) malloc (nbytes * sizeof(char));
+                memset(output_buffer, '\0', nbytes);
 
+                MPI_Recv(output_buffer, nbytes, MPI_CHAR, i, 30, MPI_COMM_WORLD, &status);
 
-                MPI_Recv(output_buffer, ..);     // outputul in urma encodarii
+                // write in output file the content after codification
+                fwrite(output_buffer, 1, nbytes, output_fp);
+                fprintf(codification_fp2, "%llu\n", output_buffer_bits);
+            
+                free(output_buffer);
 
-                // scriere in fisier a outputului
-                
-                // eliberare memorie buffer de output
-     
+                nr_of_chunks_aux[i] --;
             }
-    }
-    else
-    {
-        // primeste numarul de chunk-uri de la master
-        MPI_Recv(nr_of_chunks, ..);
-
-        // primeste chunk-urile si codifica
-        while(nr_of_chunks > 0){
-            MPI_Recv(chunk_size, ..);
-            MPI_Recv(chunk_content, ..);
-            write_codification_for_chunk(buf/*chunk content*/, nread/*chunk size*/, codification, output_fp);
         }
     }
-   
+    else
+     {
+        long int nr_of_chunks;
+        int chunk_size;
+
+        // receive the number of chunks from the zero proc 
+        MPI_Recv(&nr_of_chunks, 1, MPI_LONG_INT, 0, MPI_TAG, MPI_COMM_WORLD, &status);
+
+        // receive chunks write codification
+        while(nr_of_chunks > 0){
+            MPI_Recv(&chunk_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(buf, chunk_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
+            
+            write_codification_for_chunk(buf, chunk_size, codification, output_fp, codification_fp2, myrank);
+            
+            memset(buf, '\0', CHUNK);
+            nr_of_chunks --;
+        }
+    }
 }
 
 // in loc de fwrite se va face MPI_Send catre master
-void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp /*nu mai este necesar output_fp aici*/) {
-    int i;
+void write_codification_for_chunk(char *chunk, int chunk_size, char **codification, FILE* output_fp /*nu mai este necesar output_fp aici*/, FILE *codification_fp2, int myrank) {
     char* output_buffer = (char*) malloc(CHUNK);
-    int current_size = 0;
-    char *codif = NULL;
-    int codif_size = 0;
-    int remaining_size  = 0;
+    char output_char = 0;
+    int output_buffer_contor = 0;
+    int contor = 7;
+    int i, j;
+    unsigned long long int bits = 0;
 
+    memset(output_buffer, '\0', CHUNK);
+
+    
     for (i = 0; i < chunk_size; i ++) {
-        codif = codification[(unsigned int)chunk[i]];
-        codif_size = strlen(codif);
-        
-	if (current_size + codif_size >= CHUNK) {
-            remaining_size = current_size + codif_size  - CHUNK;
-            strncpy(output_buffer + current_size, codif, codif_size - remaining_size);
-            
-	    fwrite(output_buffer, sizeof(char), CHUNK, output_fp);
-            memset(output_buffer, '\0', CHUNK);
-            current_size = remaining_size;
-            
-	    if (remaining_size > 0) {
-                strncpy(output_buffer, codif + codif_size - remaining_size, remaining_size);
+        char *codif = codification[(unsigned int)chunk[i]];
+        for (j = 0; j < strlen(codif); j ++) {
+            output_char |= (codif[j] - 48) << contor;
+            contor --;
+            bits += 1;
+
+            if (contor == -1) {
+                output_buffer[output_buffer_contor] = output_char;
+                output_buffer_contor += 1;
+                output_char = 0;
+                contor = 7;
             }
-        }
-        else {
-            strcpy(output_buffer + current_size, codif);
-            current_size += codif_size;
         }   
     }
-    fwrite(output_buffer, sizeof(char), current_size, output_fp);
+
+    if (contor > -1 && contor < 7) {
+        output_buffer[output_buffer_contor] = output_char;
+        output_buffer_contor += 1;
+    }
+
+    // sends the result back to proc 0
+    MPI_Send(&bits, 1, MPI_UNSIGNED_LONG_LONG, 0, 30, MPI_COMM_WORLD);
+    MPI_Send(output_buffer, output_buffer_contor, MPI_CHAR, 0, 30, MPI_COMM_WORLD);
 
     free(output_buffer);
 }
@@ -186,6 +254,7 @@ void write_codification(FILE* codification_fp, char **codification) {
 
 char** read_configuration(FILE *codification_fp) {
     char **codification = (char**) calloc(128, sizeof(char*));
+    
     char *line = NULL;
     ssize_t nread;
     char index;
@@ -315,4 +384,3 @@ node_t* build_huffman_tree(unsigned long long int* frequecy){
     /* return the only node left in heap */
     return pop(h);
 }
-

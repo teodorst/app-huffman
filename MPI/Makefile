@@ -1,4 +1,4 @@
-C=gcc
+CC=mpicc
 CFLAGS=-Wall -g
 
 build: huffman_decodification_serial huffman_codification_serial
@@ -25,9 +25,8 @@ frequency.o: frequency.c frequency.h
 huffman.o: huffman.c huffman.h 
 	$(CC) $(CFLAGS) -c -o $@ huffman.c
 
-
-run: huffman_serial
-	./huffman_serial decompress out.out in2.in dictionar
+run: huffman_codification_serial
+	mpirun -np 4 huffman_codification_serial in.in out_comp.out dictionar
 
 clean:
 	rm *.o huffman_decodification_serial huffman_codification_serial

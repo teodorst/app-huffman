@@ -1,4 +1,5 @@
 *.o
 tests/
-in.in
+*.in
+*.out
 test*
