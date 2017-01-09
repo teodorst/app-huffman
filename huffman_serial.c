@@ -49,7 +49,7 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
     unsigned long long int size = ftell(input_fp);
     fseek(input_fp, 0, SEEK_SET);
 
-    int i, ret;
+    int i;
     char input_file_buffer[size];
     char output_file_buffer[size];
 

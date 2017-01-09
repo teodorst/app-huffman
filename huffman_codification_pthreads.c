@@ -129,7 +129,6 @@ void *codification_thread(void *huffman_info_thread) {
 	char *output_buffer = thread_arg->output_buffer;
 
 	printf("Hy! %d start %d, size %d !\n", thread_arg->thread_id, index, upper_limit);
-	int i, j;
 	
 	write_codification_for_chunk_pthreads(input_buffer, index, upper_limit, codification, output_buffer, output_buffer_contor, nbits);
 
@@ -164,7 +163,7 @@ void huffman_codification_pthreads(char *input_file_name, char* output_file_name
 
 
 	// read input file //
-	size_t nread = fread(input_file_buffer, 1, size, input_file);
+	fread(input_file_buffer, 1, size, input_file);
 
 	unsigned long long int *frequency = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
 

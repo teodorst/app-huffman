@@ -314,7 +314,6 @@ char **read_configuration_pthreads(FILE *codification_fp, unsigned long long int
 
     // read codification
     for(i = 0; i < codification_length; i ++ ) {
-        fprintf(stderr, "%d asa tati\n", i);
         nread = getline(&line, &line_length, codification_fp);
         if (nread == 1) {
             index = line[0];
