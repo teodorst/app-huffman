@@ -13,6 +13,8 @@
 
 #define TAG 10
 #define MASTER_PROCESS 0
+#define CODIFICATION_V_SIZE 128 * 20
+
 
 FILE* open_file(char *filename, char *mode) {
 	FILE* fp;
@@ -44,14 +46,22 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 
 	char *input_buffer;
 
-	unsigned long long int size;
-	unsigned long long int process_size;
-
+	int size;
+	int process_size;
+    int i;
 	// read file only by master process
-   	if (myrank = MASTER_PROCESS) {
-		FILE* input_file;
-	    FILE* output_file;
-	    FILE* codification_file;
+    printf("%d\n", myrank);
+
+
+    char codification_v[CODIFICATION_V_SIZE];
+    char** codification = (char**) calloc(128, sizeof(char*));
+
+
+   	if (myrank == MASTER_PROCESS) {
+		// open files
+        FILE* input_file = open_file(input_filename, "r");
+        FILE* output_file = open_file(output_filename, "w");
+        FILE* codification_file = open_file(codification_filename, "w");
 
 	    // compute input file size
 		fseek(input_file, 0, SEEK_END);
@@ -66,25 +76,115 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
    		unsigned long long int *frequency = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
    		// compute frequency
 		for (i = 0; i < size; i ++) {
-			frequency[(unsigned char)input_file_buffer[i]] ++;
+			frequency[(unsigned char)input_buffer[i]] ++;
 		}
+        
+        // create huffman_tree
+        node_t* root_holder = build_huffman_tree(frequency);
+        char path[MAX_BITS_CODE];
+        find_codification(root_holder, path, 0, codification);
 
 		int sum = 0;
 		
 		for (i = 0; i < 128; i ++) {
 			sum += frequency[i];
+            if (codification[i]) {
+                printf("%c %s\n", i, codification[i]);
+            }
 		}
-
 		printf("%d\n", sum);
 
-   	}
-   	else {
-   		input_buffer = (char *) malloc(process_size * sizeof(char));
-   	}
+        int codification_size = 0;
+        for (i = 0; i < 128; i ++) {
+            if (codification[i]) {
+                codification_size ++;
+            }
+        }
 
-    char** codification = (char**) calloc(128, sizeof(char*));
-    char *codification_v = (char *) malloc (128 * 128 * sizeof(char*));
+        int codification_contor = 0;
+        // transform the codification matrix into a vector 
+        int row, i;
+        for (row = 0; row < 128; row++)
+        {
+            if (codification[row]) {
+                for (i = 0; i < strlen(codification[row]) ; i++)
+                    codification_v[row * 20 + i] = codification[row][i];
+                
+                for (i = strlen(codification[row]); i < 20; i++)
+                    codification_v[row * 20 + i] = '\0';
+                }
+            else {
+                for (i = 0; i < 20; i++)
+                    codification_v[row * 20 + i] = '\0';
+            }
+        }
+
+        // for (i = 0; i < 128 * 20; i ++) {
+        //     if (i % 20 == 0) {
+        //         printf("\n");
+        //     }
+        //     printf("%c", codification_v[i]);
+        // }
+        // printf("second \n");
+        // for (i = 0; i < 128; i ++) {
+        //     printf("%s\n", codification_v + i * 20);
+        // }
+   	} else {
+
+    }
+
+    MPI_Bcast(codification_v, CODIFICATION_V_SIZE, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    if (myrank == MASTER_PROCESS) {
+        for (i = 1; i < nr_proc; i ++) {
+            MPI_Send(&process_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send(input_buffer + (i - 1) * process_size, process_size, MPI_CHAR, i, 0, MPI_COMM_WORLD);
+            printf("%d a trimis la %d input buffer\n", myrank, i);
+        }
+    }
+
+    if (myrank != MASTER_PROCESS) {
+        
+        for (i = 0; i < 128; i ++) {
+            if (strlen(codification_v + i * 20) > 0) {
+                codification[i] = strdup(codification_v + i * 20);
+            }
+        }
+
+        // for (i = 0; i < 128; i++) {
+        //     if (codification[i]) {
+        //        printf("%c %s\n", i, codification[i]);
+        //     }
+        // }
+
+        MPI_Recv(&process_size, 1, MPI_INT, MASTER_PROCESS, 0, MPI_COMM_WORLD, &status);
+        printf("%d \n", process_size);
+        input_buffer = (char *) malloc(process_size * sizeof(char));
+        char* output_buffer = (char *) malloc(process_size * sizeof(char));
+
+        MPI_Recv(input_buffer, process_size, MPI_CHAR, MASTER_PROCESS, 0, MPI_COMM_WORLD, &status);
+        
+        printf("%d a primit\n", myrank);
+
+        int output_buffer_contor = 0;
+        unsigned long long int nbits = 0;
+        write_codification_for_chunk_pthreads(input_buffer, 0, process_size, codification, output_buffer, &output_buffer_contor, &nbits);
+
+        printf("%d a codificat in %d chars %llu bits\n", myrank, output_buffer_contor, nbits);
+
+    }
+
+
+
+   	// else {
+   	// 	input_buffer = (char *) malloc(process_size * sizeof(char));
+    //     MPI_Recv(codification_v, CODIFICATION_V_SIZE, MPI_CHAR, MASTER_PROCESS, 0, MPI_COMM_WORLD, &status);
+    //     printf("%d A primit codif\n", myrank );
+   	// }
+
     char path[MAX_BITS_CODE];
+
+
 
     // // the master task
     // if (myrank == 0){
