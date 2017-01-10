@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -g
 
-build: serial pthreads_codification pthreads_decodification mpi_codification
+build: serial pthreads_codification pthreads_decodification mpi_codification mpi_decodification
 
 serial: huffman_serial.o priority_queue.o frequency.o huffman.o
 	$(CC) $(CFLAGS) -o huffman_serial $^
@@ -9,6 +9,8 @@ serial: huffman_serial.o priority_queue.o frequency.o huffman.o
 mpi_codification: huffman_codification_mpi.o frequency.o huffman.o priority_queue.o
 	mpicc -o $@ $^
 
+mpi_decodification: huffman_decodification_mpi.o frequency.o huffman.o priority_queue.o
+	mpicc -o $@ $^
 
 pthreads_codification: huffman_codification_pthreads.o frequency.o huffman.o priority_queue.o
 	$(CC) $(CFLAGS) -pthread -o huffman_codification_pthreads $^
@@ -18,6 +20,9 @@ pthreads_decodification: huffman_decodification_pthreads.o frequency.o huffman.o
 
 huffman_codification_mpi.o: huffman_codification_mpi.c frequency.o huffman.o priority_queue.o
 	mpicc -c -o $@ huffman_codification_mpi.c
+
+huffman_decodification_mpi.o: huffman_decodification_mpi.c frequency.o huffman.o priority_queue.o
+	mpicc -c -o $@ huffman_decodification_mpi.c
 
 huffman_codification_pthreads.o: huffman_codification_pthreads.c frequency.o huffman.o priority_queue.o
 	$(CC) $(CFLAGS) -c -o $@ huffman_codification_pthreads.c

@@ -50,7 +50,6 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 	int process_size;
     int i;
 	// read file only by master process
-    printf("%d\n", myrank);
 
 
     char codification_v[CODIFICATION_V_SIZE];
@@ -87,24 +86,6 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
         char path[MAX_BITS_CODE];
         find_codification(root_holder, path, 0, codification);
 
-		int sum = 0;
-		
-		for (i = 0; i < 128; i ++) {
-			sum += frequency[i];
-            if (codification[i]) {
-                printf("%c %s\n", i, codification[i]);
-            }
-		}
-		printf("%d\n", sum);
-
-        int codification_size = 0;
-        for (i = 0; i < 128; i ++) {
-            if (codification[i]) {
-                codification_size ++;
-            }
-        }
-
-        int codification_contor = 0;
         // transform the codification matrix into a vector 
         int row, i;
         for (row = 0; row < 128; row++)
@@ -178,11 +159,9 @@ int huffman_compress(char* input_filename, char* output_filename, char* codifica
 
         MPI_Send(&output_buffer_contor, 1, MPI_INT, MASTER_PROCESS, 0, MPI_COMM_WORLD);
         MPI_Send(&nbits, 1, MPI_UNSIGNED_LONG, MASTER_PROCESS, 0, MPI_COMM_WORLD);
-        MPI_Send(input_buffer, output_buffer_contor, MPI_CHAR, MASTER_PROCESS, 0, MPI_COMM_WORLD);
+        MPI_Send(output_buffer, output_buffer_contor, MPI_CHAR, MASTER_PROCESS, 0, MPI_COMM_WORLD);
 
     }
-
-    MPI_Finalize();
 
     return 0;
 }
@@ -197,8 +176,10 @@ int main (int argc, char* argv[]) {
     else {
         printf("Bad arguments\n");
         printf("Usage huffman_serial_codification input_file ouput_file codification_file_name\n");
+        MPI_Finalize();
 	return 1;
     }
 
+    MPI_Finalize();
     return 0;
 }

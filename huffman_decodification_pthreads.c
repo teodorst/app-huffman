@@ -88,7 +88,7 @@ int pthread_barrier_wait(pthread_barrier_t *barrier)
 #define OUTPUT_FILE 	2
 #define CODIFICATION 	3
 
-#define NUM_THREADS 	8
+#define NUM_THREADS 	4
 #define MASTER_THREAD   0
 
 typedef struct huffman_thread_struct {
@@ -153,7 +153,6 @@ void huffman_decodification_pthreads(char *input_file_name, char* output_file_na
     for (i = 0; i < NUM_THREADS; i ++) {
         compressed_file_size += input_buffer_contors[i];
     }
-
 
     for (i = NUM_THREADS - 1; i > 0; i --) {
         input_buffer_contors[i] = input_buffer_contors[i-1];
