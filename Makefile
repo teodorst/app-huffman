@@ -49,4 +49,4 @@ run: huffman_serial
 	./huffman_serial decompress out.out in2.in dictionar
 
 clean:
-	rm *.o huffman_serial huffman_codification_pthreads
+	rm *.o huffman_serial huffman_codification_pthreads huffman_decodification_pthreads mpi_codification mpi_decodification
