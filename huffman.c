@@ -11,7 +11,6 @@ node_t* init_node(char data) {
     node_t* node = (node_t*) malloc(sizeof(node_t));
     node->data = data;
     node->left = node->right = NULL;
-    node->priority = 0; // this data is unused in decompression phase
     return node;
 }
 
