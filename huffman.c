@@ -158,7 +158,7 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
     int i, j;
 
     for (i = 0; i < chunk_size; i ++) {
-        char *codif = codification[(unsigned int)chunk[i]];
+        char *codif = codification[(unsigned char)chunk[i]];
         for (j = 0; j < strlen(codif); j ++) {
             *output_char |= (codif[j] - 48) << *contor;
             *contor -= 1;
