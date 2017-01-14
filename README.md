@@ -37,3 +37,32 @@ To load into memory the input file (size can be up to 2GB) first you have to run
 ```sh
 $ ulimit -s unlimited
 ```
+
+To compile the project
+```sh
+$ make
+```
+
+How To Run:
+
+```sh
+$ ./huffman_serial compress/decompress input_file output_file codif_file
+```
+
+```sh
+$ ./mpi_codification input_file output_file codif_file
+```
+
+```sh
+$ ./mpi_decodification input_file output_file codif_file
+```
+
+```sh
+$ ./pthreads_codification input_file output_file codif_file
+```
+
+```sh
+$ ./pthreads_decodification input_file output_file codif_file
+```
+
+
