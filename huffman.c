@@ -95,7 +95,7 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
     unsigned long long int total_bytes = 0L;
     unsigned long long int nbytes = nbits % 8L == 0L ? nbits / 8L : nbits/8L + 1L;
     char *aux_buf = (char *) calloc (CHUNK, sizeof(char));
-    char *result = (char *) calloc (nbytes, sizeof(char));
+    char *result = (char *) calloc (2*nbytes, sizeof(char));
     node_t *remainig_node;
     remainig_node = root;
 
@@ -124,7 +124,6 @@ void decode_bytes(FILE *in_fp, FILE *out_fp, node_t *root, unsigned long long in
 
     free(aux_buf);
     free(result);
-    printf("FInish\n");
     if (total_bytes < nbytes)
         printf("less number of bytes %llu\n", total_bytes);
 }
