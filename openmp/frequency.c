@@ -4,19 +4,18 @@
 
 #include "frequency.h"
 
-void print_frequency(int chunk_size, unsigned long long int* frequency){
+void print_frequency(int* frequency){
 	int i;
-	
 	for (i = 0 ; i < 128; i++){
 		if (frequency[i] != 0)
-			printf("%llu ", frequency[i]);
+			printf("%d ", frequency[i]);
 	}
 
 	printf("\n");
 }
 
 
-void compute_frequency_for_chunk(char *chunk, int chunk_size, unsigned long long int* frequency) {
+void compute_frequency_for_chunk_buffer(char *chunk, int chunk_size, int* frequency) {
 	int i;
 
 	for (i = 0; i < chunk_size; i ++) {
@@ -25,12 +24,38 @@ void compute_frequency_for_chunk(char *chunk, int chunk_size, unsigned long long
 
 }
 
+void compute_frequency_for_chunk(char *chunk, int chunk_size, int* frequency) {
+	int i;
 
-unsigned long long int* compute_frequency(FILE *fp) {
+	for (i = 0; i < chunk_size; i ++) {
+		frequency[(unsigned char)chunk[i]] ++;
+	}
+
+}
+
+char *read_file(FILE *fp, long file_size) {
+	size_t nread = 0;
+	char *buffer = (char *)malloc(file_size * sizeof(char));
+	nread = fread(buffer, 1, file_size, fp);
+	if (nread != file_size) {
+		return NULL;
+	}
+	return buffer;
+}
+
+int *compute_frequency_buffer(char *buffer, int size) {
+	int* frequency = (int*) calloc(128, sizeof(int));
+	printf("Blana \n");
+	compute_frequency_for_chunk_buffer(buffer, size, frequency);
+	printf("Blana \n");
+	return frequency;
+}
+
+int* compute_frequency(FILE *fp) {
 	size_t nread = 0;
 	int chunk_size = 0;
 	char buf[CHUNK];
-	unsigned long long int* frequency = (unsigned long long int*) calloc(128, sizeof(unsigned long long int));
+	int* frequency = (int*) calloc(128, sizeof(int));
 
 	memset(buf, '\0', CHUNK);
 	while((nread = fread(buf, 1, CHUNK, fp)) > 0) {

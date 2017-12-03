@@ -3,10 +3,14 @@ CFLAGS=-Wall -g
 
 build: all
 
-all: huffman_OpenMP.o priority_queue.o frequency.o huffman.o
-	$(CC) $(CFLAGS) -o huffman_OpenMP -fopenmp $^
+all: huffman_openmp_tasks.o priority_queue.o frequency.o huffman.o
+	$(CC) $(CFLAGS) -o huffman_openmp_tasks -fopenmp $^
 
-huffman_serial.o: huffman_OpenMP.c priority_queue.o frequency.o huffman.o
+huffman_openmp_tasks.o: huffman_openmp_tasks.c priority_queue.o frequency.o huffman.o
+	$(CC) $(CFLAGS) -c -o $@ -fopenmp huffman_openmp_tasks.c
+
+
+huffman_openmp.o: huffman_OpenMP.c priority_queue.o frequency.o huffman.o
 	$(CC) $(CFLAGS) -c -o $@ -fopenmp huffman_OpenMP.c
 
 
@@ -20,4 +24,4 @@ huffman.o: huffman.c huffman.h
 	$(CC) $(CFLAGS) -c -o $@ -fopenmp huffman.c
 
 clean:
-	rm *.o huffman_OpenMP
+	rm *.o huffman_openmp_tasks

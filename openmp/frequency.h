@@ -8,10 +8,14 @@
 // #define CHUNK 1024
 
 
-void print_frequency(int chunk_size, unsigned long long int* frequecy);
+void print_frequency(int* frequecy);
 
-void compute_frequency_for_chunk(char *chunk, int chunk_size, unsigned long long int* frequecy);
+void compute_frequency_for_chunk(char *chunk, int chunk_size, int* frequecy);
 
-unsigned long long int* compute_frequency(FILE *fp);
+int *compute_frequency_buffer(char *buffer, int size);
+
+int* compute_frequency(FILE *fp);
+
+char *read_file(FILE *fp, long file_size);
 
 #endif /* FREQUENCY_H */

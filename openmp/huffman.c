@@ -142,25 +142,89 @@ void write_codification_for_chunk(char *chunk, int chunk_size, char **codificati
 }
 
 
-void write_codification(FILE* codification_fp, char **codification, unsigned long long int nbits) {
+void write_codification_metadata(FILE* codification_fp, int file_size, char **codification, int codification_size, 
+    int *output_buffer_contors, long *nbits_buffer, int task_num) {
+
     int i;
     char *output_string = (char*) calloc(MAX_BITS_CODE + 5, sizeof(char));
+    long nbits = 0;
+    
+    for (i = 0; i < task_num; i ++) {
+        nbits += nbits_buffer[i];
+    }
+    fprintf(codification_fp, "%d\n", file_size);
+    fprintf(codification_fp, "%ld\n", nbits);
+    fprintf(codification_fp, "%d\n", codification_size);
 
-    fprintf(codification_fp, "%llu\n", nbits);
-
-    omp_set_dynamic(0);
-    omp_set_num_threads(NUM_THREADS);
-    #pragma omp parallel for private(i) shared(codification, output_string, codification_fp) schedule(static, 500)
     for (i = 0; i < MAX_BITS_CODE; i ++) {
         if (codification[i] != NULL) {
-            sprintf(output_string, "%c : %s\n", i, codification[i]);
-            fwrite(output_string, strlen(codification[i]) + 5, 1, codification_fp);            
-            memset(output_string, 0, MAX_BITS_CODE + 5);
+            fprintf(codification_fp, "%c : %s\n", i, codification[i]);
         }
+    }
+    for (i = 0; i < task_num; i ++) {
+        fprintf(codification_fp, "%d %ld\n", output_buffer_contors[i], nbits_buffer[i]);
     }
     free(output_string);
 }
 
+char **read_configuration_metadata(FILE* codification_fp, int *file_size, int **input_buffer_contors, 
+    long **nbits_buffer, int *tasks_num, long *nbits, int *compressed_file_size) {
+
+    char **codification = (char**) calloc(128, sizeof(char*));
+    char *line = NULL;
+    ssize_t nread;
+    char index;
+    int i;
+    size_t line_length;
+    int codification_length;
+
+    // read number of lines from codification
+    fscanf(codification_fp, "%d\n", file_size);
+    fscanf(codification_fp, "%ld\n", nbits);
+    fscanf(codification_fp, "%d\n", &codification_length);
+
+    // read codification
+    for(i = 0; i < codification_length; i ++ ) {
+        nread = getline(&line, &line_length, codification_fp);
+        if (nread == 1) {
+            index = line[0];
+            nread = getline(&line, &line_length, codification_fp);
+            if (nread != -1) {
+                line[nread-1] = '\0';
+                codification[(unsigned char)index] = strdup(line+3);
+            }
+        } else {
+            line[nread-1] = '\0';
+            sscanf(line, "%c", &index);
+            codification[(unsigned char)index] = strdup(line+4);
+        }
+    }
+
+    *tasks_num = *file_size % CHUNK == 0 ? *file_size / CHUNK : *file_size / CHUNK + 1;
+    *input_buffer_contors = (int*) calloc(*tasks_num, sizeof(int));
+    *nbits_buffer = (long*) calloc(*tasks_num, sizeof(long));
+
+    for (i = 0; i < *tasks_num; i ++) {
+        fscanf(codification_fp, "%d %ld", *input_buffer_contors + i, *nbits_buffer + i);
+    }
+
+    for (i = 0; i < *tasks_num; i ++) {
+        *compressed_file_size += (*input_buffer_contors)[i];
+    }
+
+    for (i = *tasks_num - 1; i > 0; i --) {
+        (*input_buffer_contors)[i] = (*input_buffer_contors)[i-1];
+    }
+    (*input_buffer_contors)[0] = 0;
+
+    for (i = 1; i < *tasks_num; i ++) {
+        (*input_buffer_contors)[i] += (*input_buffer_contors)[i-1];
+    }
+
+    free(line);
+    return codification;
+
+}
 
 char** read_configuration(FILE *codification_fp, unsigned long long int* nbits) {
     char **codification = (char**) calloc(128, sizeof(char*));
@@ -274,7 +338,7 @@ node_t* build_huffman_tree_from_codification(char **codification) {
 }
 
 
-node_t* build_huffman_tree(unsigned long long int* frequecy){
+node_t* build_huffman_tree(int* frequecy){
     /* initialize and populate the priority queue */
     heap_t *h = init_priority_queue();
     insert_values_in_queue(frequecy, h);
@@ -299,5 +363,87 @@ node_t* build_huffman_tree(unsigned long long int* frequecy){
 
     /* return the only node left in heap */
     return pop(h);
+}
+
+long get_file_length(FILE *fp) {
+    long sz = 0;
+    fseek(fp, 0L, SEEK_END);
+    sz = ftell(fp);
+    fseek(fp, 0L, SEEK_SET);
+    return sz;
+}
+
+
+
+void write_codification_for_chunk_tasks(char *chunk, int index, int upper_limit, char **codification,
+	char *output_buffer, int *output_buffer_contor, long *bits) {
+    
+    *output_buffer_contor = index;
+    *bits = 0;
+    int output_buffer_contor_static = index;
+    int contor = 7;
+    int i, j;
+    char output_char = 0;
+    char *codif = NULL;
+    int codif_size = 0;
+
+    for (i = index; i < upper_limit; i ++) {
+        codif = codification[(unsigned char)chunk[i]];
+        codif_size = strlen(codif);
+        for (j = 0; j < codif_size; j ++) {
+            output_char |= (codif[j] - 48) << contor;
+            contor --;
+            *bits += 1;
+
+            if (contor == -1) {
+                output_buffer[output_buffer_contor_static++] = output_char;
+                output_char = 0;
+                contor = 7;
+            }
+        }
+    }
+
+    if (contor > -1 && contor < 7) {
+        output_buffer[output_buffer_contor_static] = output_char;
+        output_buffer_contor_static += 1;
+    }
+
+    *output_buffer_contor = output_buffer_contor_static - index;
+
+}
+
+int decode_bytes_tasks(node_t *root, char *buffer, unsigned long long int nbits, char* out_buffer) {
+
+    int i, j;
+    node_t *node = root;
+    unsigned long long int nbytes = nbits % 8 == 0 ? nbits/8 : nbits/8 + 1;
+    unsigned long long int count_bits = 0L;
+    int bit;
+    int length = 0;
+    for (i = 0; i < nbytes; i++) {
+        for (j = 7 ; j >= 0 && count_bits < nbits; j--) {
+
+            /* get bit */
+            bit = (buffer[i] >> j) & 1;
+
+            if (bit == 0) {
+                /* go left in tree*/
+                node = node->left;
+
+            } else {
+                /* go right in tree */
+                node = node->right;
+            }
+
+            /* depth search from the root */
+            if (node->left == NULL && node->right == NULL) {
+                out_buffer[length ++] = node->data;
+                node = root;
+            }
+
+            count_bits ++;
+        }
+    }
+    return length;
 }
 

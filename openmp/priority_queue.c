@@ -65,7 +65,7 @@ node_t* pop(heap_t* heap) {
 }
 
 
-void insert_values_in_queue(unsigned long long int* frequecy, heap_t* h){
+void insert_values_in_queue(int* frequecy, heap_t* h){
 	int i;
 
 	/* add all the letters into the heap */
