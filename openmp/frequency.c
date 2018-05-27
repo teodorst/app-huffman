@@ -45,9 +45,7 @@ char *read_file(FILE *fp, long file_size) {
 
 int *compute_frequency_buffer(char *buffer, int size) {
 	int* frequency = (int*) calloc(128, sizeof(int));
-	printf("Blana \n");
 	compute_frequency_for_chunk_buffer(buffer, size, frequency);
-	printf("Blana \n");
 	return frequency;
 }
 

@@ -3,7 +3,8 @@
 #ifndef FREQUENCY_H
 #define FREQUENCY_H
 
- #define CHUNK 1048576
+#define CHUNK 10000000 // 10MB
+//  #define CHUNK 1048576
 // #define CHUNK 2
 // #define CHUNK 1024
 

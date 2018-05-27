@@ -169,35 +169,31 @@ void write_codification_metadata(FILE* codification_fp, int file_size, char **co
 
 char **read_configuration_metadata(FILE* codification_fp, int *file_size, int **input_buffer_contors, 
     long **nbits_buffer, int *tasks_num, long *nbits, int *compressed_file_size) {
-
+    int LINESZ = 100;
     char **codification = (char**) calloc(128, sizeof(char*));
-    char *line = NULL;
-    ssize_t nread;
+    char line[LINESZ];
     char index;
-    int i;
-    size_t line_length;
     int codification_length;
+    int line_index = 0;
+    int i;
 
     // read number of lines from codification
     fscanf(codification_fp, "%d\n", file_size);
     fscanf(codification_fp, "%ld\n", nbits);
     fscanf(codification_fp, "%d\n", &codification_length);
-
     // read codification
-    for(i = 0; i < codification_length; i ++ ) {
-        nread = getline(&line, &line_length, codification_fp);
-        if (nread == 1) {
-            index = line[0];
-            nread = getline(&line, &line_length, codification_fp);
-            if (nread != -1) {
-                line[nread-1] = '\0';
-                codification[(unsigned char)index] = strdup(line+3);
-            }
-        } else {
-            line[nread-1] = '\0';
-            sscanf(line, "%c", &index);
-            codification[(unsigned char)index] = strdup(line+4);
+    for (i = 0; i < codification_length; i ++ ) {
+        memset(line, '\0', LINESZ);
+        fgets(line, LINESZ, codification_fp);
+        line[strlen(line)-1] = '\0';
+        line_index = 4;
+        index = line[0];
+
+        if (line[0] == ':') {
+            line_index = 2;
+            index = '\n';
         }
+        codification[(unsigned char)index] = strdup(line+line_index);
     }
 
     *tasks_num = *file_size % CHUNK == 0 ? *file_size / CHUNK : *file_size / CHUNK + 1;
@@ -221,7 +217,6 @@ char **read_configuration_metadata(FILE* codification_fp, int *file_size, int **
         (*input_buffer_contors)[i] += (*input_buffer_contors)[i-1];
     }
 
-    free(line);
     return codification;
 
 }
@@ -373,8 +368,6 @@ long get_file_length(FILE *fp) {
     return sz;
 }
 
-
-
 void write_codification_for_chunk_tasks(char *chunk, int index, int upper_limit, char **codification,
 	char *output_buffer, int *output_buffer_contor, long *bits) {
     
@@ -434,7 +427,7 @@ int decode_bytes_tasks(node_t *root, char *buffer, unsigned long long int nbits,
                 /* go right in tree */
                 node = node->right;
             }
-
+            
             /* depth search from the root */
             if (node->left == NULL && node->right == NULL) {
                 out_buffer[length ++] = node->data;

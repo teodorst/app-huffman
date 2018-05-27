@@ -18,11 +18,14 @@ base64 /dev/urandom | head -c 51200000 > 50M.txt
 #generate 100 MB file
 base64 /dev/urandom | head -c 102400000 > 100M.txt
 
-#generate 200 MB file
-base64 /dev/urandom | head -c 204800000 > 200M.txt
+#generate 500 MB file
+base64 /dev/urandom | head -c 512000000 > 500M.txt
 
-#generate 300 MB file
-base64 /dev/urandom | head -c 307200000 > 300M.txt
+#generate 1 GB file
+base64 /dev/urandom | head -c 1024000000 > 1GB.txt
 
-#generate 400 MB file
-base64 /dev/urandom | head -c 409600000 > 400M.txt
+#generate 2 GB file
+base64 /dev/urandom | head -c 2048000000 > 2GB.txt
+
+#generate 4 GB file
+base64 /dev/urandom | head -c 4096000000 > 4GB.txt
